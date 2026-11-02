@@ -135,7 +135,7 @@ header[data-testid="stHeader"],
 .cc-tabs a.on {
   color: var(--amber);
   border-bottom-color: var(--amber);
-  text-shadow: 0 0 12px rgba(252, 238, 9, 0.45);
+  text-shadow: 0 0 12px rgba(224, 162, 104, 0.45);
 }
 
 .cc-topbar-actions {
@@ -180,8 +180,8 @@ header[data-testid="stHeader"],
 .btn {
   display: inline-block;
   padding: 7px 14px;
-  border: 1px solid rgba(252, 238, 9, 0.5);
-  background: rgba(252, 238, 9, 0.035);
+  border: 1px solid rgba(224, 162, 104, 0.5);
+  background: rgba(224, 162, 104, 0.035);
   color: var(--amber);
   font-family: var(--font-ui);
   font-size: 11px;
@@ -612,8 +612,8 @@ header[data-testid="stHeader"],
 }
 
 [class*="st-key-hud-modal-"] [data-baseweb="tag"] {
-  background: rgba(252, 238, 9, 0.12) !important;
-  border: 1px solid rgba(252, 238, 9, 0.35) !important;
+  background: rgba(224, 162, 104, 0.12) !important;
+  border: 1px solid rgba(224, 162, 104, 0.35) !important;
   border-radius: 0 !important;
   color: var(--amber) !important;
   font-family: var(--font-mono) !important;

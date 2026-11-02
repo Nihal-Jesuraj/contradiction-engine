@@ -112,23 +112,23 @@ CHRONOCLASH_API=http://127.0.0.1:9000/api streamlit run hud/app.py
 ### Layout
 
 - **Subject matrix** — every entity, its status (`clean`, `suspect`, `conflicted`), record count, conflict count, and peak severity. Select a tile to filter the timeline lanes or click a subject label in the timeline.
-- **Master timeline** — Plotly-rendered lanes with source-colored marks, wheel zoom/pan, hover tooltips, conflict markers, BFS connectors, and a callout for the focused contradiction. Zoom controls are linkable query parameters (`?zoom=in|out|fit`).
-- **Anomaly queue** — top-k conflicts ranked by the hand-written min-heap. Select a row for the BFS explanation trace; `?top_k=5|8|12|20` changes the heap capacity.
+- **Master timeline** — Plotly-rendered lanes with source-colored marks, wheel zoom/pan, hover tooltips, conflict markers, BFS connectors, and a callout for the focused contradiction. Compact `+`, `-`, and `FIT` buttons control the window without leaving the page.
+- **Anomaly queue** — top-k conflicts ranked by the hand-written min-heap. Choose a queue target, then press `OPEN TRACE` for the BFS explanation; the `TRACE CAPACITY` segmented control sets the heap bound.
 - **Evidence posture** — case window, rules, planted truth, scan latency, throughput, RSS, source composition, precision/recall/F1, and scan history sparkline.
 - **Action matrix** — full rescan, incremental analysis, append record, ingest file, gap audit, benchmark, and JSON/CSV export.
 - **Resolution protocol** — triage, corroborate, reconcile, attest.
 - **Benchmark matrix** — summary KPIs, log-scale latency chart, scale table, and live-probe controls.
 
-All interactive state lives in Streamlit widgets or query parameters, so a view can be bookmarked or shared. Forms open as fixed HUD overlays above the terminal.
+All interactive state lives in `st.session_state`; controls rerun the script in place, so the browser URL never changes and no navigation or new page is triggered. Forms, traces, gap audits and exports open in `st.dialog` modals above the terminal.
 
 ### Useful flows
 
 1. **Run the detector cascade:** `FULL RESCAN` runs every detector and rebuilds the constraint graph.
 2. **Append one record:** `APPEND RECORD` inserts an event, reindexes it, and runs only local incremental detectors.
 3. **Upload a case:** `INGEST FILE` accepts JSONL, JSON, or CSV. Use *append* to merge without replacing the current case.
-4. **Audit gaps:** `GAP AUDIT` lists per-entity periods above the threshold (default 900 s).
-5. **Explain a conflict:** click a queue row or a timeline callout. The modal shows severity, confidence, sources, offset, rule metadata, and the BFS evidence chain.
-6. **Probe performance:** `BENCHMARK` runs a synchronous quick benchmark (`persist=false`), writes under `backend/results/runs/<timestamp>/`, and leaves the committed canonical benchmark untouched. `RESTORE CANONICAL` reloads `/bench/latest`.
+4. **Audit gaps:** `GAP AUDIT` lists per-entity periods above the `SILENCE THRESHOLD` (default 900 s) and can jump back to a subject in place.
+5. **Explain a conflict:** choose a target in `TRACE TARGET` and press `OPEN TRACE`. The dialog shows severity, confidence, sources, offset, rule metadata, and the BFS evidence chain.
+6. **Probe performance:** `BENCHMARK` runs a synchronous quick benchmark (`persist=false`), writes under `backend/results/runs/<timestamp>/`, and leaves the committed canonical benchmark untouched. `RESTORE` reloads `/bench/latest`.
 7. **Export:** JSON bundles include metadata, rules, ground truth and conflicts; CSV exports the ranked conflict ledger.
 
 The three-column console stacks into a single column below 1100 px and remains usable at phone widths. Motion is disabled automatically under `prefers-reduced-motion`.
@@ -454,7 +454,7 @@ The naive baseline is intentionally skipped above 10K events; O(n²) at 1M is no
 
 ### Live HUD probes
 
-The HUD's benchmark modal runs a synchronous quick probe and writes to `backend/results/runs/<timestamp>/` with `persist=false`. It never overwrites the committed canonical artifacts. `RESTORE CANONICAL` reloads `/bench/latest`.
+The HUD's benchmark modal runs a synchronous quick probe and writes to `backend/results/runs/<timestamp>/` with `persist=false`. It never overwrites the committed canonical artifacts. `RESTORE` reloads `/bench/latest` and clears the probe badge.
 
 ---
 
@@ -605,7 +605,7 @@ chronoclash/
 │   ├── app.py                 # Streamlit terminal, actions, overlays
 │   ├── render.py              # HTML panels + Plotly figures
 │   ├── client.py              # FastAPI client
-│   ├── formatting.py          # formatting/query helpers
+│   ├── formatting.py          # formatting helpers
 │   └── assets/                # HUD theme, Streamlit overrides, fonts
 ├── tests/                     # pytest suite
 ├── docs/                      # README screenshots

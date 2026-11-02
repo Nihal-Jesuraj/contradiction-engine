@@ -3,26 +3,26 @@
 
 :root {
   color-scheme: dark;
-  --bg: #05070a;
-  --bg-1: #080c11;
-  --bg-2: #0b1118;
-  --panel: #0a0f15;
-  --ink: #eee8dc;
-  --ink-dim: #cfc8ba;
-  --muted: #a39a88;
-  --faint: #756f61;
-  --amber: #fcee09;
-  --amber-bright: #fff94d;
-  --amber-dim: #8a5a0e;
-  --red: #ff003c;
-  --red-soft: #ff6b8a;
-  --green: #00f0ff;
-  --blue: #64d2ff;
-  --purple: #ff2bd6;
-  --line: #241e13;
-  --line-soft: rgba(255, 255, 255, 0.08);
-  --line-strong: #4b3611;
-  --font-display: "Orbitron", "Rajdhani", sans-serif;
+  --bg: #060504;
+  --bg-1: #0a0806;
+  --bg-2: #0f0b07;
+  --panel: #0d0a07;
+  --ink: #e9dfcc;
+  --ink-dim: #cdbfa8;
+  --muted: #9d8c75;
+  --faint: #6f6252;
+  --amber: #e0a268;
+  --amber-bright: #f4c78e;
+  --amber-dim: #7c5634;
+  --red: #e0563f;
+  --red-soft: #f0a08a;
+  --green: #a8b393;
+  --blue: #8ba9b8;
+  --purple: #b08a9a;
+  --line: rgba(224, 162, 104, 0.16);
+  --line-soft: rgba(224, 162, 104, 0.075);
+  --line-strong: rgba(224, 162, 104, 0.34);
+  --font-display: "Rajdhani", "Helvetica Neue", sans-serif;
   --font-ui: "Rajdhani", "Helvetica Neue", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 }
@@ -342,7 +342,7 @@ code {
 
 .status-dot.online {
   background: var(--green);
-  box-shadow: 0 0 7px rgba(0, 240, 255, 0.75);
+  box-shadow: 0 0 7px rgba(139, 169, 184, 0.75);
   animation: status-pulse 2.6s ease-in-out infinite;
 }
 
@@ -1846,7 +1846,7 @@ code {
 
 .empty-glyph {
   font-size: 22px;
-  color: rgba(0, 240, 255, 0.5);
+  color: rgba(139, 169, 184, 0.5);
 }
 
 .empty-state strong {
@@ -1943,7 +1943,7 @@ code {
 }
 
 .protocol-badge.ok {
-  border-color: rgba(0, 240, 255, 0.3);
+  border-color: rgba(139, 169, 184, 0.3);
   color: var(--green);
 }
 
@@ -3025,7 +3025,7 @@ code {
 
 .dropzone.has-file {
   border-style: solid;
-  border-color: rgba(0, 240, 255, 0.4);
+  border-color: rgba(139, 169, 184, 0.4);
 }
 
 .drop-glyph {

@@ -33,7 +33,6 @@ from .formatting import (
     fmt_utc,
     severity_class,
     sparkline_svg,
-    url_for,
 )
 
 
@@ -66,9 +65,6 @@ def panel_open(index: str, eyebrow: str, title: str, meta: str = "", actions: st
     return f'<section class="panel {cls}">{panel_head(index, eyebrow, title, meta, actions)}'
 
 
-def qurl(**params: Any) -> str:
-    return url_for(**params)
-
 
 def _source_legend() -> str:
     items = "".join(
@@ -100,12 +96,9 @@ def topbar_html(
 ) -> str:
     now = datetime.now(timezone.utc)
     conflicts = int(state.get("conflicts_found") or 0)
-    busy = False
     mode = str(state.get("mode") or "standby").upper()
     case_id = state.get("case_id") or "CC-UNKNOWN"
-    keep = {"entity": selected_entity, "top_k": top_k}
-    analysis_href = "#hud-analysis"
-    bench_href = "#hud-benchmark"
+    specimen = selected_entity or "MULTI-ENTITY FIELD"
     return (
         '<div class="cc-scanlines" aria-hidden="true"></div>'
         '<div class="cc-vignette" aria-hidden="true"></div>'
@@ -118,24 +111,27 @@ def topbar_html(
         '<h1>CHRONO<span>CLASH</span></h1>'
         '<p>TEMPORAL CONTRADICTION ANALYSIS TERMINAL</p>'
         "</div></div>"
-        '<nav class="cc-tabs" aria-label="HUD sections">'
-        f'<a class="on" href="{analysis_href}">Analysis</a>'
-        f'<a href="{bench_href}">Benchmark</a>'
-        "</nav>"
-        '<div class="cc-topbar-actions">'
-        f'<span class="status {"on" if online else "off"}">{"ONLINE" if online else "OFFLINE"}</span>'
-        f'<a class="btn primary" href="{qurl(action="scan", **keep)}">RUN SCAN</a>'
-        f'<a class="btn" href="{qurl(panel="add", **keep)}">ADD RECORD</a>'
-        f'<a class="btn" href="{qurl(panel="upload", **keep)}">INGEST</a>'
+        '<div class="cc-object">'
+        '<span class="cc-micro">OBJECT IDENTIFICATION // 01</span>'
+        f'<strong>{esc(specimen)}</strong>'
+        f'<em>{fmt_int(state.get("entity_count"))} SUBJECTS / {fmt_int(state.get("event_count"))} RECORDS</em>'
+        "</div>"
+        '<div class="cc-facility">'
+        f'<span class="cc-micro">CASE {esc(case_id)}</span>'
+        f'<span>{now:%Y-%m-%d} // <b>{now:%H:%M:%S} UTC</b></span>'
+        f'<span class="facility-state {"alarm" if conflicts else ""}">'
+        f'{"CONTAINMENT REQUIRED" if conflicts else "FIELD NOMINAL"}</span>'
         "</div></div>"
         '<div class="cc-telemetry">'
         f'<span class="telemetry-row"><span class="status-dot {"online" if online else "offline"}"></span>'
-        f'ENGINE <strong>{"PROCESSING" if busy else ("ONLINE" if online else "LINK DOWN")}</strong>'
-        f'<span class="telemetry-sep">/</span> MODE <strong>{esc(mode)}</strong></span>'
-        f'<span class="telemetry-row small">{now:%Y-%m-%d} <span class="telemetry-sep">/</span> '
-        f'<span class="utc-clock">{now:%H:%M:%S} UTC</span> '
-        f'<span class="telemetry-sep">/</span> UPLINK {"STABLE" if online else "RETRY"}</span>'
-        f'<span class="case-line"><span class="case-tag">CASE</span><strong>{esc(case_id)}</strong></span>'
+        f'UPLINK <strong>{"STABLE" if online else "LINK DOWN"}</strong>'
+        f'<span class="telemetry-sep">/</span> MODE <strong>{esc(mode)}</strong>'
+        f'<span class="telemetry-sep">/</span> ENGINE <strong>{"ONLINE" if online else "RETRY"}</strong></span>'
+        f'<span class="telemetry-row small">RANK CAPACITY {top_k} '
+        f'<span class="telemetry-sep">/</span> TRACE TARGET '
+        f'<strong>{esc(selected_entity or "AUTO")}</strong></span>'
+        '<span class="case-line"><span class="case-tag">SIGNAL</span>'
+        f'<strong>{"CONFLICT" if conflicts else "CLEAN"}</strong></span>'
         "</div></div>"
         '<div class="cc-kpis">'
         f'<div class="kpi"><span class="kpi-label">RECORDS</span><strong class="kpi-value">{fmt_int(state.get("event_count"))}</strong>'
@@ -177,15 +173,14 @@ def entity_panel_html(state: dict[str, Any], selected: str | None) -> str:
         name = str(entity.get("name"))
         status = str(entity.get("status") or "clean")
         is_selected = selected == name
-        href = qurl(entity=None) if is_selected else qurl(entity=name)
         severity = float(entity.get("max_severity") or 0.0)
         title = (
             f'{name} - latest: {entity.get("latest_action")} '
             f'({str(entity.get("latest_source") or "").upper()})'
         )
         tiles.append(
-            f'<a class="entity-tile status-{esc(status)} {"selected" if is_selected else ""}" '
-            f'href="{href}" title="{esc(title)}" aria-pressed="{"true" if is_selected else "false"}">'
+            f'<div class="entity-tile status-{esc(status)} {"selected" if is_selected else ""}" '
+            f'title="{esc(title)}" aria-pressed="{"true" if is_selected else "false"}">'
             '<div class="entity-tile-top">'
             f'{_status_dot(status)}<strong>{esc(name)}</strong>'
             f'<span class="entity-status">{esc(STATUS_SHORT.get(status, status))}</span>'
@@ -197,11 +192,11 @@ def entity_panel_html(state: dict[str, Any], selected: str | None) -> str:
             "</div>"
             '<span class="severity-track slim">'
             f'<span class="severity-fill {severity_class(severity)}" style="width:{max(2, severity * 100):.1f}%"></span>'
-            "</span></a>"
+            "</span></div>"
         )
     reset = (
-        f'<a class="entity-reset {"active" if selected else ""}" href="{qurl()}">'
-        f'{"CLEAR FILTER // " + esc(selected) if selected else "SHOWING ALL SUBJECTS"}</a>'
+        f'<div class="entity-reset {"active" if selected else ""}">'
+        f'{"FILTER LOCKED // " + esc(selected) if selected else "SHOWING ALL SUBJECTS"}</div>'
     )
     body = (
         '<div class="status-strip">'
@@ -301,15 +296,17 @@ def timeline_head_html(
 ) -> str:
     title = f"LANE // {selected}" if selected else "MASTER TIMELINE"
     meta = f"{fmt_int(event_count)} / {fmt_int(total)} REC"
-    keep = {"entity": selected, "top_k": top_k}
-    tools = (
-        '<div class="timeline-tools">'
-        f'<a href="{qurl(zoom="in", **keep)}" aria-label="Zoom in">+</a>'
-        f'<a href="{qurl(zoom="out", **keep)}" aria-label="Zoom out">-</a>'
-        f'<a href="{qurl(zoom="fit", **keep)}" aria-label="Fit timeline">FIT</a>'
+    head = panel_head("03", "TEMPORAL FIELD", title, meta)
+    specimen = (
+        '<div class="specimen-strip">'
+        '<div class="specimen-id"><span>SPECIMEN UNDER OBSERVATION</span>'
+        f'<strong>{esc(selected or "MULTI-ENTITY FIELD")}</strong>'
+        f'<em>{fmt_int(event_count)} RECORDS IN VIEW / {fmt_int(total)} INDEXED</em></div>'
+        '<div class="specimen-count"><span>ANOMALY FLAGS</span>'
+        f'<strong>+{fmt_int(flags)}</strong>'
+        f'<em>{"PARTIAL WINDOW" if truncated else "FULL WINDOW"}</em></div>'
         "</div>"
     )
-    head = panel_head("03", "TEMPORAL FIELD", title, meta, tools)
     badges = (
         ('<span class="warn-badge">TRUNCATED</span>' if truncated else "")
         + f'<span class="warn-badge hot">{fmt_int(flags)} FLAGS</span>'
@@ -321,7 +318,7 @@ def timeline_head_html(
         f'<div class="timeline-badges">{badges}</div>'
         "</div>"
     )
-    return f"{head}{toolbar}"
+    return f"{head}{specimen}{toolbar}"
 
 
 def timeline_foot_html(timeline: dict[str, Any], events: list[dict[str, Any]]) -> str:
@@ -418,14 +415,14 @@ def timeline_figure(
         fig.update_layout(
             height=260,
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(7,10,14,0.9)",
+            plot_bgcolor="rgba(0,0,0,0)",
             xaxis={"visible": False},
             yaxis={"visible": False},
             annotations=[
                 {
                     "text": "NO EVIDENCE IN THIS WINDOW",
                     "showarrow": False,
-                    "font": {"family": "Orbitron, sans-serif", "size": 12, "color": "#a39a88"},
+                    "font": {"family": "Rajdhani, sans-serif", "size": 12, "color": "#9b8a73"},
                 }
             ],
             margin={"l": 10, "r": 10, "t": 10, "b": 10},
@@ -532,11 +529,11 @@ def timeline_figure(
                 mode="markers",
                 name="CONTRADICTION",
                 marker={
-                    "color": "#ff003c",
+                    "color": "#e0563f",
                     "size": 9,
                     "symbol": "diamond",
                     "opacity": 0.95,
-                    "line": {"color": "#ff6b8a", "width": 0.7},
+                    "line": {"color": "#f0a08a", "width": 0.7},
                 },
                 customdata=conflict_custom,
                 hovertemplate=(
@@ -569,7 +566,7 @@ def timeline_figure(
                     "x1": right[0],
                     "y0": left[1],
                     "y1": right[1],
-                    "line": {"color": "rgba(255,69,58,0.85)", "width": 1.2, "dash": "dot"},
+                    "line": {"color": "rgba(224,86,63,0.85)", "width": 1.2, "dash": "dot"},
                     "layer": "above",
                 }
             )
@@ -582,7 +579,7 @@ def timeline_figure(
                     marker={
                         "color": "rgba(0,0,0,0)",
                         "size": 18,
-                        "line": {"color": "rgba(255,255,255,0.9)", "width": 1.3},
+                        "line": {"color": "rgba(232,220,200,0.9)", "width": 1.3},
                     },
                     hoverinfo="skip",
                     showlegend=False,
@@ -616,14 +613,14 @@ def timeline_figure(
                 "showarrow": True,
                 "arrowhead": 0,
                 "arrowwidth": 1,
-                "arrowcolor": "rgba(255,69,58,0.8)",
+                "arrowcolor": "rgba(224,86,63,0.8)",
                 "ax": 34,
                 "ay": -34,
-                "bgcolor": "rgba(30,8,8,0.95)",
-                "bordercolor": "rgba(255,69,58,0.65)",
+                "bgcolor": "rgba(24,10,7,0.95)",
+                "bordercolor": "rgba(224,86,63,0.65)",
                 "borderwidth": 1,
                 "borderpad": 4,
-                "font": {"family": "JetBrains Mono, monospace", "size": 9, "color": "#ff6b8a"},
+                "font": {"family": "JetBrains Mono, monospace", "size": 9, "color": "#f0a08a"},
             }
         )
 
@@ -632,23 +629,23 @@ def timeline_figure(
         height=height,
         margin={"l": 138, "r": 16, "t": 30, "b": 20},
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(7,10,14,0.92)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="closest",
         dragmode="pan",
         showlegend=False,
         shapes=shapes,
         annotations=annotations,
-        font={"family": "JetBrains Mono, monospace", "color": "#a39a88", "size": 10},
+        font={"family": "JetBrains Mono, monospace", "color": "#a99a84", "size": 10},
         xaxis={
             "type": "date",
             "range": [x0, x1],
             "tickformat": axis_format,
-            "tickfont": {"size": 9, "color": "rgba(232,226,214,0.55)"},
-            "gridcolor": "rgba(255,255,255,0.07)",
-            "linecolor": "rgba(255,255,255,0.28)",
+            "tickfont": {"size": 9, "color": "rgba(232,220,200,0.55)"},
+            "gridcolor": "rgba(224,162,104,0.08)",
+            "linecolor": "rgba(224,162,104,0.24)",
             "zeroline": False,
             "showspikes": True,
-            "spikecolor": "rgba(252,238,9,0.45)",
+            "spikecolor": "rgba(224,162,104,0.5)",
             "spikethickness": 1,
         },
         yaxis={
@@ -656,16 +653,16 @@ def timeline_figure(
             "tickvals": list(range(len(lanes))),
             "ticktext": [row["entity"] for row in lanes],
             "autorange": "reversed",
-            "tickfont": {"family": "Rajdhani, sans-serif", "size": 11, "color": "rgba(232,226,214,0.78)"},
-            "gridcolor": "rgba(255,255,255,0.055)",
-            "linecolor": "rgba(255,255,255,0.18)",
+            "tickfont": {"family": "Rajdhani, sans-serif", "size": 11, "color": "rgba(232,220,200,0.78)"},
+            "gridcolor": "rgba(224,162,104,0.06)",
+            "linecolor": "rgba(224,162,104,0.16)",
             "zeroline": False,
             "showticklabels": True,
         },
         hoverlabel={
-            "bgcolor": "#080c11",
-            "bordercolor": "rgba(252,238,9,0.55)",
-            "font": {"family": "JetBrains Mono, monospace", "size": 10, "color": "#eee8dc"},
+            "bgcolor": "#0b0805",
+            "bordercolor": "rgba(224,162,104,0.5)",
+            "font": {"family": "JetBrains Mono, monospace", "size": 10, "color": "#e8ddc9"},
         },
     )
     return fig
@@ -682,17 +679,20 @@ def alert_panel_html(
     focused_id: str | None,
     selected: str | None,
 ) -> str:
-    keep = {"entity": selected}
-    actions = '<span class="k-select">' + " / ".join(
-        f'<a class="{"on" if value == top_k else ""}" href="{qurl(top_k=value, **keep)}">{value}</a>'
-        for value in (5, 8, 12, 20)
-    ) + "</span>"
     head = panel_head(
         "04",
         "CONFLICT LEDGER",
         "ANOMALY QUEUE",
         f"{len(conflicts)}/{fmt_int(total)}",
-        actions,
+    )
+    peak = max((float(item.get("severity") or 0) for item in conflicts), default=0.0)
+    hero = (
+        '<div class="alert-hero">'
+        '<span class="alert-hero-mark" aria-hidden="true">&#9651;</span>'
+        '<div class="alert-hero-label"><span>TEMPORAL CONFLICT INDEX</span>'
+        f'<strong>{peak:.3f}</strong></div>'
+        '<div class="alert-hero-tags"><span>LEVEL 5</span><span>ACTIVE</span></div>'
+        "</div>"
     )
     rows: list[str] = []
     for index, conflict in enumerate(conflicts, start=1):
@@ -702,10 +702,8 @@ def alert_panel_html(
         short = KIND_SHORT.get(str(conflict.get("kind")), "")
         entity = conflict.get("entity") or conflict.get("device_id") or "MULTI-ENTITY"
         detectors = len(conflict.get("detected_by") or [])
-        href = qurl(conflict=conflict.get("id"), top_k=top_k, entity=selected)
         rows.append(
-            f'<a class="alert-row {"focused" if focused_id == conflict.get("id") else ""}" '
-            f'href="{href}" aria-label="Explain {esc(label)}">'
+            f'<div class="alert-row {"focused" if focused_id == conflict.get("id") else ""}">'
             f'<span class="alert-rank sev-{sev}">{index:02d}</span>'
             '<span class="alert-main">'
             f'<span class="alert-kind">{esc(label)}<em>{esc(short)}</em></span>'
@@ -715,7 +713,7 @@ def alert_panel_html(
             f'<span class="severity-fill {sev}" style="width:{max(3, severity * 100):.1f}%"></span>'
             "</span></span>"
             f'<span class="alert-score"><strong>{fmt_pct(conflict.get("confidence"))}</strong><em>CONF</em></span>'
-            "</a>"
+            "</div>"
         )
     if not rows:
         rows.append(
@@ -724,10 +722,11 @@ def alert_panel_html(
             "<p>No contradiction survived the detector cascade.</p></div>"
         )
     body = (
+        f"{hero}"
         '<div class="alert-legend"><span>RANK / TYPE</span><span>SEVERITY</span></div>'
         f'<div class="alert-queue">{"".join(rows)}</div>'
         '<div class="alert-foot"><span>MIN-HEAP RANKING - O(n log k)</span>'
-        f'<span>{"SELECT ROW TO TRACE" if conflicts else "AWAITING SIGNAL"}</span></div>'
+        f'<span>{f"NEAREST {top_k}" if conflicts else "AWAITING SIGNAL"}</span></div>'
     )
     return (
         f'<section class="panel alert-panel">{head}'
@@ -737,19 +736,12 @@ def alert_panel_html(
 
 def protocol_panel_html(state: dict[str, Any], top_conflict: dict[str, Any] | None, *, selected: str | None, top_k: int) -> str:
     corroborated = int((top_conflict or {}).get("corroboration") or 0)
-    has_conflict = bool(top_conflict)
-    keep = {"entity": selected, "top_k": top_k}
-    open_lead = (
-        f'<a class="inline-action" href="{qurl(conflict=top_conflict.get("id"), **keep)}">OPEN LEAD <i>-&gt;</i></a>'
-        if top_conflict
-        else '<span class="inline-action" aria-disabled="true">NO ACTIVE LEAD</span>'
-    )
     body = (
         '<ol class="protocol-list">'
         '<li class="protocol-step active"><span class="step-index">01</span><div>'
         "<strong>TRIAGE</strong>"
         "<p>Open the highest-confidence contradiction and walk the BFS evidence chain.</p>"
-        f"{open_lead}</div></li>"
+        '<span class="protocol-ref">OPEN TRACE VIA ANOMALY QUEUE</span></div></li>'
         '<li class="protocol-step"><span class="step-index">02</span><div>'
         "<strong>CORROBORATE</strong>"
         f"<p>Require independent-source support. Lead has {fmt_int(corroborated)} corroborating source"
@@ -759,11 +751,11 @@ def protocol_panel_html(state: dict[str, Any], top_conflict: dict[str, Any] | No
         '<li class="protocol-step"><span class="step-index">03</span><div>'
         "<strong>RECONCILE</strong>"
         "<p>Audit silences and device offsets. Re-run incremental analysis after any correction.</p>"
-        f'<a class="inline-action" href="{qurl(panel="gaps", **keep)}">GAP AUDIT <i>-&gt;</i></a></div></li>'
+        '<span class="protocol-ref">GAP AUDIT VIA OPERATOR CONSOLE</span></div></li>'
         '<li class="protocol-step"><span class="step-index">04</span><div>'
         "<strong>ATTEST</strong>"
         "<p>Export the conflict ledger with detector provenance for chain-of-custody.</p>"
-        f'<a class="inline-action" href="{qurl(panel="export", **keep)}">EXPORT LEDGER <i>-&gt;</i></a>'
+        '<span class="protocol-ref">EXPORT LEDGER VIA OPERATOR CONSOLE</span>'
         "</div></li></ol>"
         '<div class="protocol-foot">'
         f'<span>{esc(KIND_LABEL.get(str((top_conflict or {}).get("kind")), "NO ACTIVE LEAD"))}</span>'
@@ -792,33 +784,12 @@ ACTION_ICONS = {
 }
 
 
-def action_panel_html(state: dict[str, Any], *, selected: str | None, top_k: int) -> str:
-    keep = {"entity": selected, "top_k": top_k}
-    entries = [
-        ("scan", "FULL RESCAN", "Rebuild index + all detectors", "primary", qurl(action="scan", **keep)),
-        ("incremental", "INCREMENTAL", "Re-check pending neighbourhoods", "", qurl(action="incremental", **keep)),
-        ("record", "APPEND RECORD", "Inject one evidence event", "", qurl(panel="add", **keep)),
-        ("upload", "INGEST FILE", "JSONL / CSV / JSON dataset", "", qurl(panel="upload", **keep)),
-        ("gap", "GAP AUDIT", "Locate silences in coverage", "", qurl(panel="gaps", **keep)),
-        ("bench", "BENCHMARK", "Run live performance probe", "", qurl(panel="bench", **keep)),
-    ]
-    tiles = "".join(
-        f'<a class="action-tile {tone}" href="{href}">'
-        f'<span class="action-icon"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">{ACTION_ICONS[key]}</svg></span>'
-        f'<span class="action-copy"><strong>{label}</strong><small>{detail}</small></span>'
-        '<span class="action-state">-&gt;</span></a>'
-        for key, label, detail, tone, href in entries
-    )
-    head = panel_head(
-        "06",
-        "OPERATOR CONSOLE",
-        "ACTION MATRIX",
-        "READY",
-        f'<span class="export-links"><a href="/api/export?format=json" target="_blank">JSON</a>'
-        f'<span>/</span><a href="/api/export?format=csv" target="_blank">CSV</a></span>',
-    )
-    body = (
-        f'<div class="action-grid">{tiles}</div>'
+def action_header_html(state: dict[str, Any]) -> str:
+    return panel_head("06", "OPERATOR CONSOLE", "ACTION MATRIX", "READY")
+
+
+def action_telemetry_html(state: dict[str, Any]) -> str:
+    return (
         '<div class="action-telemetry">'
         f'<span>LAST SCAN <b>{fmt_ms(state.get("analysis_ms"))}</b></span>'
         f'<span>PENDING EVENTS <b>{fmt_int(state.get("pending_events"))}</b></span>'
@@ -826,7 +797,6 @@ def action_panel_html(state: dict[str, Any], *, selected: str | None, top_k: int
         f'<span>RUNS <b>{fmt_int(state.get("analysis_runs"))}</b></span>'
         "</div>"
     )
-    return f'<section class="panel action-panel">{head}<div class="panel-body">{body}</div></section>'
 
 
 # --------------------------------------------------------------------------
@@ -841,16 +811,7 @@ def bench_header_and_summary(bench: dict[str, Any] | None, *, probe: bool, selec
         else "NO TELEMETRY"
     )
     keep = {"entity": selected, "top_k": top_k}
-    actions = (
-        '<div class="bench-actions">'
-        + ('<span class="probe-badge">LIVE PROBE</span>' if probe else "")
-        + (
-            f'<a class="mini-button" href="{qurl(panel="bench", **keep)}">LIVE PROBE</a>'
-            if not probe
-            else f'<a class="mini-button" href="{qurl(action="bench-refresh", **keep)}">RESTORE CANONICAL</a>'
-        )
-        + "</div>"
-    )
+    actions = '<span class="probe-badge">LIVE PROBE</span>' if probe else ""
     head = panel_head("07", "EMPIRICAL VALIDATION", "BENCHMARK MATRIX", meta, actions)
     checks = (
         f'{summary.get("results_ok", 0)}/{summary.get("results_ok", 0) + summary.get("results_failed", 0)} OK'
@@ -948,11 +909,11 @@ def bench_figure(bench: dict[str, Any] | None) -> go.Figure:
     fig = go.Figure()
     sizes = [int(row.get("events") or 0) for row in results]
     series = [
-        ("total", "TOTAL PIPELINE", [row.get("full_analysis_ms") for row in results], "#f5a623", 2.2),
-        ("index", "INDEX BUILD", [row.get("index_build_ms") for row in results], "#7dd3fc", 1.4),
-        ("detectors", "DETECTORS", [row.get("detector_total_ms") for row in results], "#ff6b5a", 1.4),
-        ("graph", "CONSTRAINT GRAPH", [row.get("constraint_graph_ms") for row in results], "#c084fc", 1.4),
-        ("gaps", "GAP SCAN", [row.get("gap_scan_ms") for row in results], "#34c759", 1.2),
+        ("total", "TOTAL PIPELINE", [row.get("full_analysis_ms") for row in results], "#e0a268", 2.2),
+        ("index", "INDEX BUILD", [row.get("index_build_ms") for row in results], "#8ba9b8", 1.4),
+        ("detectors", "DETECTORS", [row.get("detector_total_ms") for row in results], "#d9775f", 1.4),
+        ("graph", "CONSTRAINT GRAPH", [row.get("constraint_graph_ms") for row in results], "#b08a9a", 1.4),
+        ("gaps", "GAP SCAN", [row.get("gap_scan_ms") for row in results], "#9fb08a", 1.2),
     ]
     for _, label, values, color, width in series:
         fig.add_trace(
@@ -973,36 +934,36 @@ def bench_figure(bench: dict[str, Any] | None) -> go.Figure:
         height=238,
         margin={"l": 52, "r": 8, "t": 28, "b": 24},
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(7,10,14,0.55)",
-        font={"family": "JetBrains Mono, monospace", "size": 9, "color": "#a39a88"},
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"family": "JetBrains Mono, monospace", "size": 9, "color": "#a99a84"},
         legend={
             "orientation": "h",
             "yanchor": "bottom",
             "y": 1.02,
             "x": 0,
-            "font": {"size": 8, "color": "#a39a88"},
+            "font": {"size": 8, "color": "#a99a84"},
             "bgcolor": "rgba(0,0,0,0)",
         },
         xaxis={
             "type": "log",
             "tickvals": sizes,
             "ticktext": [fmt_compact(value) for value in sizes],
-            "gridcolor": "rgba(245,166,35,0.09)",
-            "linecolor": "rgba(245,166,35,0.3)",
+            "gridcolor": "rgba(224,162,104,0.08)",
+            "linecolor": "rgba(224,162,104,0.24)",
             "tickfont": {"size": 9},
         },
         yaxis={
             "type": "log",
             "tickvals": tickvals,
             "ticktext": ticktext,
-            "gridcolor": "rgba(245,166,35,0.09)",
-            "linecolor": "rgba(245,166,35,0.3)",
+            "gridcolor": "rgba(224,162,104,0.08)",
+            "linecolor": "rgba(224,162,104,0.24)",
             "tickfont": {"size": 8.5},
         },
         hoverlabel={
-            "bgcolor": "#0a0e13",
-            "bordercolor": "rgba(245,166,35,0.5)",
-            "font": {"family": "JetBrains Mono, monospace", "size": 10, "color": "#e8e2d6"},
+            "bgcolor": "#0b0805",
+            "bordercolor": "rgba(224,162,104,0.45)",
+            "font": {"family": "JetBrains Mono, monospace", "size": 10, "color": "#e8ddc9"},
         },
     )
     return fig
@@ -1038,11 +999,7 @@ def footer_html(state: dict[str, Any], *, online: bool) -> str:
 # Explain and gap overlays
 # --------------------------------------------------------------------------
 
-def _close_href(selected: str | None, top_k: int) -> str:
-    return qurl(entity=selected, top_k=top_k)
-
-
-def explain_overlay_html(payload: dict[str, Any], *, selected: str | None, top_k: int) -> str:
+def explain_body_html(payload: dict[str, Any], *, selected: str | None, top_k: int) -> str:
     conflict = payload.get("conflict") or {}
     chain = payload.get("chain") or []
     severity = float(conflict.get("severity") or 0)
@@ -1101,12 +1058,6 @@ def explain_overlay_html(payload: dict[str, Any], *, selected: str | None, top_k
         f'<dl class="meta-list">{meta_rows or "<div><dt>provenance</dt><dd>detector cascade</dd></div>"}</dl>'
         "</div>"
     )
-    locate = (
-        f'<a class="inline-action" href="{qurl(entity=conflict.get("entity"), top_k=top_k)}">'
-        "LOCATE SUBJECT -&gt;</a>"
-        if conflict.get("entity")
-        else ""
-    )
     body = (
         '<div class="explain-layout">'
         f"{summary}"
@@ -1115,30 +1066,15 @@ def explain_overlay_html(payload: dict[str, Any], *, selected: str | None, top_k
         '<div class="explain-columns">'
         f'<ol class="evidence-chain">{steps}</ol>'
         f"{side}</div>"
-        f'<div class="explain-footnote"><span>{locate}</span>'
+        '<div class="explain-footnote">'
+        f'<span>LOCATE SUBJECT VIA THE TRACE CONTROL</span>'
         f'<span>BFS O(V+E) - {fmt_int(payload.get("nodes_visited"))} nodes</span></div>'
         "</div>"
     )
-    close = _close_href(selected, top_k)
-    return (
-        '<div class="hud-modal-backdrop"><div class="hud-modal wide">'
-        '<span class="modal-corner tl"></span><span class="modal-corner tr"></span>'
-        '<span class="modal-corner bl"></span><span class="modal-corner br"></span>'
-        '<header class="modal-head"><div>'
-        '<span class="panel-eyebrow">BFS EVIDENCE INTERROGATION</span>'
-        '<h2>CONFLICT TRACE // ' + esc(conflict.get("id")) + "</h2></div>"
-        f'<div class="modal-head-right"><span class="modal-meta">{esc(KIND_LABEL.get(str(conflict.get("kind")), ""))}</span>'
-        f'<a class="modal-close" href="{close}" aria-label="Close trace">X</a></div></header>'
-        f'<div class="modal-body">{body}</div>'
-        '<footer class="modal-foot">'
-        '<span class="modal-foot-note">Chain reconstructed from rule edges plus temporal adjacency. '
-        "No library graph implementation is used.</span>"
-        f'<a class="hud-button ghost small" href="{close}">CLOSE TRACE</a>'
-        "</footer></div></div>"
-    )
+    return body
 
 
-def gaps_overlay_html(
+def gaps_body_html(
     payload: dict[str, Any],
     *,
     threshold: float,
@@ -1146,12 +1082,6 @@ def gaps_overlay_html(
     top_k: int,
 ) -> str:
     gaps = payload.get("gaps") or []
-    keep = {"entity": selected, "top_k": top_k}
-    thresholds = "".join(
-        f'<a class="{"on" if int(threshold) == value else ""}" '
-        f'href="{qurl(panel="gaps", threshold=value, **keep)}">{value}s</a>'
-        for value in (300, 900, 1800, 3600)
-    )
     rows = "".join(
         "<tr>"
         f'<td class="strong">{esc(gap.get("entity"))}</td>'
@@ -1160,41 +1090,24 @@ def gaps_overlay_html(
         f'<td class="mono accent">{fmt_duration(gap.get("duration_s"))}</td>'
         f'<td class="mono">{esc(gap.get("after_event") or "-")}</td>'
         f'<td class="mono">{esc(gap.get("before_event") or "-")}</td>'
-        f'<td><a class="inline-action" href="{qurl(entity=gap.get("entity"), top_k=top_k)}">LOCATE</a></td>'
         "</tr>"
         for gap in gaps
     )
     if not rows:
         rows = (
-            '<tr><td colspan="7" class="dim">No silence exceeds the current threshold.</td></tr>'
+            '<tr><td colspan="6" class="dim">No silence exceeds the current threshold.</td></tr>'
         )
-    body = (
+    return (
         '<div class="gap-controls">'
-        f'<span class="control-label">SILENCE THRESHOLD</span><span class="segmented">{thresholds}</span>'
+        f'<span class="control-label">SILENCE THRESHOLD</span><span class="gap-threshold">{int(threshold)}s</span>'
         f'<span class="gap-summary"><b>{fmt_int(len(gaps))}</b> GAPS / {fmt_int(payload.get("returned"))} RETURNED</span>'
         "</div>"
         '<div class="gap-table-wrap"><table class="gap-table"><thead><tr>'
         "<th>SUBJECT</th><th>GAP START</th><th>GAP END</th><th>DURATION</th>"
-        "<th>AFTER</th><th>BEFORE</th><th></th></tr></thead>"
+        "<th>AFTER</th><th>BEFORE</th></tr></thead>"
         f"<tbody>{rows}</tbody></table></div>"
         '<div class="gap-footnote"><span>SCAN O(n) PER SUBJECT LANE</span>'
         f'<span>FILTER {esc(selected or "ALL SUBJECTS")}</span></div>'
-    )
-    close = _close_href(selected, top_k)
-    return (
-        '<div class="hud-modal-backdrop"><div class="hud-modal wide">'
-        '<span class="modal-corner tl"></span><span class="modal-corner tr"></span>'
-        '<span class="modal-corner bl"></span><span class="modal-corner br"></span>'
-        '<header class="modal-head"><div>'
-        '<span class="panel-eyebrow">COVERAGE INTERROGATION</span>'
-        "<h2>GAP AUDIT</h2></div>"
-        f'<div class="modal-head-right"><span class="modal-meta">THRESHOLD {int(threshold)}s</span>'
-        f'<a class="modal-close" href="{close}" aria-label="Close gap audit">X</a></div></header>'
-        f'<div class="modal-body">{body}</div>'
-        '<footer class="modal-foot"><span class="modal-foot-note">Gaps are unexplained silences between '
-        "consecutive records for the same subject; they are investigative leads, not contradictions.</span>"
-        f'<a class="hud-button ghost small" href="{close}">CLOSE AUDIT</a></footer>'
-        "</div></div>"
     )
 
 
@@ -1208,7 +1121,7 @@ def boot_screen_html(error: str | None) -> str:
         error_html = (
             '<div class="boot-error"><strong>UPLINK SEVERED</strong>'
             f"<p>{esc(error)}</p>"
-            '<a class="hud-button small" href="?">RETRY LINK</a></div>'
+            '</div>'
         )
     return (
         '<div class="boot-screen">'

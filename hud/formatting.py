@@ -5,18 +5,17 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from html import escape
 from typing import Any, Iterable
-from urllib.parse import urlencode
 
 
 SOURCE_ORDER: tuple[str, ...] = ("cctv", "call", "gps", "bank", "device", "witness")
 
 SOURCE_COLORS: dict[str, str] = {
-    "cctv": "#fcee09",
-    "call": "#00f0ff",
-    "gps": "#ff2bd6",
-    "bank": "#ff9f1c",
-    "device": "#8a7dff",
-    "witness": "#ffffff",
+    "cctv": "#e0a268",
+    "call": "#8ba9b8",
+    "gps": "#c97b63",
+    "bank": "#d9b26f",
+    "device": "#a88f7a",
+    "witness": "#d8cbb8",
 }
 
 SOURCE_LABEL: dict[str, str] = {
@@ -170,12 +169,6 @@ def severity_class(severity: Any) -> str:
     return "low"
 
 
-def url_for(**params: Any) -> str:
-    """A relative query-string URL for the current Streamlit page."""
-    clean = {key: value for key, value in params.items() if value not in (None, "")}
-    return "?" + urlencode(clean) if clean else "?"
-
-
 def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
@@ -184,7 +177,7 @@ def sparkline_svg(
     values: Iterable[float],
     width: int = 118,
     height: int = 34,
-    color: str = "#f5a623",
+    color: str = "#e0a268",
 ) -> str:
     """Hand-built SVG sparkline so the HUD has no chart dependency for it."""
     series = [float(value) for value in values if value is not None]
@@ -206,7 +199,7 @@ def sparkline_svg(
         f'height="{height}" preserveAspectRatio="none" aria-hidden="true">'
         f'<polygon points="{area}" fill="{color}" opacity="0.10"/>'
         f'<line x1="0" y1="{height - 4}" x2="{width}" y2="{height - 4}" '
-        f'stroke="rgba(245,166,35,0.16)" stroke-width="1"/>'
+        f'stroke="rgba(224,162,104,0.16)" stroke-width="1"/>'
         f'<polyline points="{line}" fill="none" stroke="{color}" stroke-width="1.4" '
         f'stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'
         f'<circle cx="{last_x:.2f}" cy="{last_y:.2f}" r="2" fill="{color}"/>'

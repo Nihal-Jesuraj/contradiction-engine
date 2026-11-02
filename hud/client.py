@@ -51,6 +51,7 @@ class ApiClient:
         data: Any | None = None,
         files: Any | None = None,
         timeout: float | None = None,
+        raw: bool = False,
     ) -> Any:
         url = f"{self.base}{path}"
         try:
@@ -73,6 +74,8 @@ class ApiClient:
             except ValueError:
                 pass
             raise ApiError(str(detail), response.status_code)
+        if raw:
+            return response.content
         if response.headers.get("content-type", "").startswith("application/json"):
             return response.json()
         return response.content
@@ -164,8 +167,10 @@ class ApiClient:
             timeout=60 * 60,
         )
 
-    def export_url(self, fmt: str = "json") -> str:
-        return f"{self.base}/export?format={fmt}"
+    def export_bytes(self, fmt: str = "json") -> bytes:
+        return self._request(
+            "GET", "/export", params={"format": fmt}, timeout=120, raw=True
+        )
 
 
 __all__ = ["ApiClient", "ApiError", "DEFAULT_API_BASE"]
