@@ -28,6 +28,17 @@ def test_all_pages_render_without_exceptions() -> None:
         assert not app.exception
 
 
+def test_not_analysed_before_analyze() -> None:
+    """The analyze page shows only the prompt until ANALYZE is pressed."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Analyze & Conflicts")
+    assert [info.value for info in app.info] == ["Not analysed yet. Press ANALYZE."]
+    assert not app.metric
+    assert not app.tabs
+
+
 def test_generate_then_analyze_then_explore() -> None:
     """The full generate, analyze, and explore journey stays healthy."""
     app = _app()
@@ -39,6 +50,9 @@ def test_generate_then_analyze_then_explore() -> None:
     analyze = next(button for button in app.button if button.label == "ANALYZE")
     analyze.click().run()
     assert not app.exception
+    labels = {metric.label for metric in app.metric}
+    assert {"Records", "Conflicts", "Highest severity", "Runtime"} <= labels
+    assert app.tabs
 
     app = _go(app, "Evidence Explorer")
     assert not app.exception

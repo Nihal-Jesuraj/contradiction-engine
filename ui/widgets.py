@@ -273,11 +273,18 @@ def numbers_frame(numbers: dict[str, object]) -> pd.DataFrame:
     rows = [
         {
             "Metric": NUMBER_LABELS.get(key, key.replace("_", " ").capitalize()),
-            "Value": value,
+            "Value": _number_text(value),
         }
         for key, value in numbers.items()
     ]
     return pd.DataFrame(rows)
+
+
+def _number_text(value: object) -> str:
+    """Format one conflict number without mixing column types."""
+    if isinstance(value, float):
+        return f"{value:.1f}"
+    return str(value)
 
 
 def highest_severity(conflicts: list[Conflict]) -> float | None:

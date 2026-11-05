@@ -2,6 +2,18 @@
 
 All checkpoints from the ChronoClash refactor are recorded here.
 
+## Unreleased
+
+### Changed (UI only)
+
+- Analyze page: nothing but "Not analysed yet. Press ANALYZE." before a run;
+  ANALYZE runs inside `st.status` with a toast; KPI row (records, conflicts,
+  highest severity, detector runtime); separate ground-truth panel; conflicts
+  grouped into tabs by readable kind; each conflict is a bordered card with
+  side-by-side record tables, broken rule, numbers table and explanation;
+  road-map route graph for travel/claimed-place conflicts; state timeline for
+  "Device was off"; detector docs expander.
+
 ## 0.2.0 — 2026-11-06
 
 ### Added
