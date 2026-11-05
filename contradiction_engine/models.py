@@ -16,6 +16,7 @@ from datetime import datetime
 from .algorithms.graph import WeightedGraph
 from .algorithms.hash_table import HashTable
 from .algorithms.sorting import lower_bound, merge_sort, upper_bound
+from .algorithms.trie import Trie
 
 RECORD_TYPES: tuple[str, ...] = (
     "state",
@@ -352,10 +353,13 @@ class CaseIndex:
         self.person_index: HashTable = HashTable()
         self.device_index: HashTable = HashTable()
         self.account_index: HashTable = HashTable()
+        self._trie = Trie()
         for record in self.records:
             _index_add(self.person_index, record.person, record)
             _index_add(self.device_index, record.device, record)
             _index_add(self.account_index, record.account, record)
+            for word in _search_words(record):
+                self._trie.insert(word, record.id)
 
     def people(self) -> list[str]:
         """Return non-empty person names in sorted order."""
@@ -393,23 +397,21 @@ class CaseIndex:
         return self.records[first:last]
 
     def keyword(self, query: str) -> list[Evidence]:
-        """Return records whose searchable text contains ``query``.
+        """Return records containing every word of ``query``.
 
         Inputs: a query string.
         Outputs: matching records in chronological order.
-        Complexity: O(n * m) time for m characters compared per record.
+        Complexity: O(q * m + k) time for q query words and k matches.
         """
-        needle = query.strip().lower()
-        if not needle:
+        tokens = [token for token in query.strip().lower().split() if token]
+        if not tokens:
             return list(self.records)
-        matches: list[Evidence] = []
-        for record in self.records:
-            haystack = " ".join(
-                [record.text, record.action, record.person, record.place]
-            ).lower()
-            if needle in haystack:
-                matches.append(record)
-        return matches
+        allowed: set[str] = set(self._trie.record_ids_with_prefix(tokens[0]))
+        for token in tokens[1:]:
+            allowed = allowed & set(self._trie.record_ids_with_prefix(token))
+            if not allowed:
+                return []
+        return [record for record in self.records if record.id in allowed]
 
 
 def _index_add(
@@ -425,6 +427,19 @@ def _index_add(
         bucket = []
         table.put(key, bucket)
     bucket.append(record)
+
+
+def _search_words(record: Evidence) -> list[str]:
+    """Return the lowercase words used by the explorer's trie."""
+    text = " ".join(
+        [record.text, record.action, record.person, record.place]
+    ).lower()
+    words: list[str] = []
+    for raw in text.split():
+        word = raw.strip(".,!?;:'\"()[]")
+        if word:
+            words.append(word)
+    return words
 
 
 def case_to_csv(case: Case) -> str:

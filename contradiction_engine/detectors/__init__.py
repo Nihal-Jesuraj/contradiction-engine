@@ -11,7 +11,7 @@ from ..algorithms.graph import WeightedGraph
 from ..algorithms.hash_table import HashTable
 from ..algorithms.sorting import merge_sort
 from ..models import Conflict, Evidence
-from . import chronology, device_state, location
+from . import chronology, claims, device_state, location
 
 
 def run_all_detectors(
@@ -28,6 +28,7 @@ def run_all_detectors(
     found.extend(device_state.detect(records))
     found.extend(location.detect(records, graph))
     found.extend(chronology.detect(records))
+    found.extend(claims.detect(records))
 
     seen: HashTable = HashTable()
     unique: list[Conflict] = []
