@@ -9,6 +9,7 @@ from contradiction_engine.models import (
     Conflict,
     Evidence,
     GroundTruth,
+    build_evidence_graph,
     build_place_graph,
     is_connected,
     score_conflicts,
@@ -118,3 +119,32 @@ def test_case_index_filters_and_range() -> None:
     assert [row.id for row in index.in_range(start, end)] == ["R2"]
     assert [row.id for row in index.keyword("harbour")] == ["R1", "R2", "R3"]
     assert index.keyword("nothing") == []
+
+
+def test_evidence_graph_links_people_devices_accounts_and_places() -> None:
+    """Co-occurring entities become neighbours in the BFS graph."""
+    records = [
+        make_record("R1", 8, "P1"),
+        Evidence(
+            id="R2",
+            timestamp=datetime(2026, 3, 2, 9, tzinfo=timezone.utc),
+            record_type="login",
+            person="P1",
+            account="A1",
+            device="D1",
+        ),
+    ]
+    graph = build_evidence_graph(records)
+    assert set(graph.neighbors("person:P1")) == {
+        "place:Harbour",
+        "account:A1",
+        "device:D1",
+    }
+    assert graph.related("person:P1", 1)["place:Harbour"] == 1
+    assert graph.related("person:P1", 2)["device:D1"] == 1
+
+
+def test_case_index_exposes_the_entity_graph() -> None:
+    """The explorer reuses one graph built at index time."""
+    index = CaseIndex([make_record("R1", 8, "P1")])
+    assert index.evidence_graph.related("person:P1", 1) == {"place:Harbour": 1}

@@ -28,6 +28,7 @@ class GeneratorConfig:
     location_conflicts: int = 2
     message_conflicts: int = 2
     claim_conflicts: int = 2
+    location_claim_conflicts: int = 0
 
 
 @dataclass
@@ -66,6 +67,9 @@ def generate_case(config: GeneratorConfig | None = None) -> GeneratedCase:
         records, truth, counter, settings.message_conflicts, start
     )
     _plant_claim_conflicts(records, truth, counter, settings.claim_conflicts, start)
+    _plant_location_claim_conflicts(
+        records, truth, counter, settings.location_claim_conflicts, start
+    )
 
     case = Case(
         name=f"generated-seed-{settings.seed}",
@@ -84,6 +88,7 @@ def _validate_config(config: GeneratorConfig) -> None:
         config.location_conflicts,
         config.message_conflicts,
         config.claim_conflicts,
+        config.location_claim_conflicts,
     )
     if any(count < 0 for count in counts):
         raise ValueError("planted conflict counts cannot be negative")
@@ -243,7 +248,11 @@ def _plant_device_conflicts(
     count: int,
     start: datetime,
 ) -> None:
-    """Add isolated devices where one activity happens while the device is off."""
+    """Add isolated devices where an activity or login happens while off.
+
+    Even-indexed plants use a local activity; odd-indexed plants use a login
+    that names the device, so both forms of local device use are covered.
+    """
     for index in range(count):
         device = f"PX-D{index + 1:02d}"
         t0 = start + timedelta(hours=6, minutes=index * 10)
@@ -253,12 +262,21 @@ def _plant_device_conflicts(
                     "activity", device=device, action="file access")
         off_state = _add_record(records, counter, "ST", t0 + timedelta(minutes=10),
                                 "state", device=device, state="OFF")
-        activity = _add_record(records, counter, "ACT", t0 + timedelta(minutes=15),
-                               "activity", device=device, action="local login")
-        truth.append(
-            GroundTruth("device_state", (activity.id, off_state.id),
-                        "activity planted inside an OFF interval")
-        )
+        if index % 2 == 0:
+            planted = _add_record(
+                records, counter, "ACT", t0 + timedelta(minutes=15),
+                "activity", device=device, action="local login",
+            )
+            note = "activity planted inside an OFF interval"
+        else:
+            planted = _add_record(
+                records, counter, "LOG", t0 + timedelta(minutes=15),
+                "login", device=device,
+                person=f"PX-DP{index + 1:02d}",
+                account=f"PX-DA{index + 1:02d}",
+            )
+            note = "device login planted inside an OFF interval"
+        truth.append(GroundTruth("device_state", (planted.id, off_state.id), note))
 
 
 def _plant_location_conflicts(
@@ -328,4 +346,28 @@ def _plant_claim_conflicts(
         truth.append(
             GroundTruth("claim", (claim.id, login.id),
                         "login inside a denied-access window")
+        )
+
+
+def _plant_location_claim_conflicts(
+    records: list[Evidence],
+    truth: list[GroundTruth],
+    counter: list[int],
+    count: int,
+    start: datetime,
+) -> None:
+    """Add claimed-location statements contradicted by a close sighting."""
+    for index in range(count):
+        person = f"PX-LC{index + 1:02d}"
+        t0 = start + timedelta(hours=10, minutes=index * 10)
+        sighting = _add_record(records, counter, "SGT", t0, "sighting",
+                               person=person, place="Library")
+        claim = _add_record(
+            records, counter, "CLM", t0 - timedelta(minutes=3), "claim",
+            person=person, place="Harbour", claim="claimed_at",
+            end_timestamp=t0 + timedelta(minutes=3),
+        )
+        truth.append(
+            GroundTruth("claim_location", (claim.id, sighting.id),
+                        "sighting elsewhere inside a claimed-location window")
         )

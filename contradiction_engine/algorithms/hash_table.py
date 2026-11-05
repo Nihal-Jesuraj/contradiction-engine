@@ -175,6 +175,19 @@ class HashTable:
         """Return ``size / capacity`` for inspection in tests and the UI."""
         return self._size / self._capacity
 
+    def longest_chain(self) -> int:
+        """Return the number of pairs in the largest bucket.
+
+        Inputs: none.
+        Outputs: a non-negative integer (0 for an empty table).
+        Complexity: O(capacity) time, O(1) space.
+        """
+        longest = 0
+        for bucket in self._buckets:
+            if len(bucket) > longest:
+                longest = len(bucket)
+        return longest
+
     def __len__(self) -> int:
         """Return the number of stored pairs."""
         return self._size

@@ -6,7 +6,7 @@ import csv
 import io
 import json
 
-from contradiction_engine.loader import load_case
+from contradiction_engine.loader import case_variant_warnings, load_case
 from contradiction_engine.models import CSV_FIELDS
 
 
@@ -238,3 +238,72 @@ def test_ground_truth_with_unknown_id_is_rejected() -> None:
     )
     assert case is None
     assert "unknown record id" in errors[0]
+
+
+def test_claimed_at_claim_loads() -> None:
+    """A claimed_at row needs a place instead of an account."""
+    rows = valid_rows() + [
+        make_row(id="CLM2", timestamp="2026-03-02T13:00:00Z",
+                 record_type="claim", person="P1", place="Harbour",
+                 claim="claimed_at", end_timestamp="2026-03-02T13:10:00Z"),
+    ]
+    case, errors = load_case("case.csv", to_csv(rows))
+    assert errors == []
+    assert case is not None
+    claim = case.records[-1]
+    assert claim.claim == "claimed_at"
+    assert claim.place == "Harbour"
+    assert claim.account == ""
+
+
+def test_claimed_at_without_place_is_rejected() -> None:
+    rows = [make_row(id="C", timestamp="2026-03-02T13:00:00Z",
+                     record_type="claim", person="P1",
+                     claim="claimed_at",
+                     end_timestamp="2026-03-02T13:10:00Z")]
+    case, errors = load_case("case.csv", to_csv(rows))
+    assert case is None
+    assert "missing required field(s): place" in errors[0]
+
+
+def test_claimed_at_with_unknown_place_is_rejected() -> None:
+    rows = [make_row(id="C", timestamp="2026-03-02T13:00:00Z",
+                     record_type="claim", person="P1", place="Atlantis",
+                     claim="claimed_at",
+                     end_timestamp="2026-03-02T13:10:00Z")]
+    case, errors = load_case("case.csv", to_csv(rows))
+    assert case is None
+    assert "unknown place" in errors[0]
+
+
+def test_denied_access_without_account_is_rejected() -> None:
+    rows = [make_row(id="C", timestamp="2026-03-02T13:00:00Z",
+                     record_type="claim", person="P1",
+                     claim="did_not_access",
+                     end_timestamp="2026-03-02T13:10:00Z")]
+    case, errors = load_case("case.csv", to_csv(rows))
+    assert case is None
+    assert "missing required field(s): account" in errors[0]
+
+
+def test_case_variant_warnings_flag_case_only_names() -> None:
+    """A second spelling that differs only by case is reported to the UI."""
+    rows = valid_rows() + [
+        make_row(id="SGT2", timestamp="2026-03-02T09:30:00Z",
+                 record_type="sighting", person="p1", place="Station"),
+    ]
+    case, errors = load_case("case.csv", to_csv(rows))
+    assert errors == []
+    assert case is not None
+    warnings = case_variant_warnings(case.records)
+    assert len(warnings) == 1
+    assert "person 'P1' and 'p1'" in warnings[0]
+    assert "case-sensitive" in warnings[0]
+
+
+def test_consistent_names_produce_no_warnings() -> None:
+    """A case that uses one spelling per entity needs no warning."""
+    case, errors = load_case("case.csv", to_csv(valid_rows()))
+    assert errors == []
+    assert case is not None
+    assert case_variant_warnings(case.records) == []

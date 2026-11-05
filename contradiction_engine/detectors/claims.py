@@ -1,8 +1,9 @@
 """Detector 4: a denied-access claim that overlaps a real login.
 
-Algorithm: group login records by account with our HashTable, merge-sort each
-account's logins, and use lower/upper binary-search bounds to find logins in
-the closed claim window.
+Algorithm: group login records by ``(account, person)`` with our HashTable,
+merge-sort each pair's logins, and use lower/upper binary-search bounds to find
+logins in the closed claim window. Logins by other people on the same account
+are not evidence against the claimant.
 """
 
 from __future__ import annotations
@@ -11,25 +12,28 @@ from ..algorithms.hash_table import HashTable
 from ..algorithms.sorting import lower_bound, merge_sort, upper_bound
 from ..models import Conflict, Evidence
 
-RULE = "A denied-access claim cannot overlap a login to the same account."
+RULE = "A denied-access claim cannot overlap a login by that person to the same account."
+# Unit separator cannot appear in a CSV cell, so (account, person) pairs cannot collide.
+_KEY_SEPARATOR = "\x1f"
 
 
 def detect(records: list[Evidence]) -> list[Conflict]:
-    """Find did_not_access claims that overlap an account login.
+    """Find did_not_access claims that overlap a login by the same person.
 
     Inputs: all evidence records.
     Outputs: one conflict per claim with at least one matching login.
     Complexity: O(n log n + c log n + k) time, O(n) space.
     """
-    logins_by_account = _group_logins(records)
+    logins_by_person = _group_logins(records)
     conflicts: list[Conflict] = []
     for claim in records:
         if claim.record_type != "claim" or claim.claim != "did_not_access":
             continue
         if claim.end_timestamp is None:
             continue
+        key = _login_key(claim.account, claim.person)
         logins = merge_sort(
-            logins_by_account.get(claim.account, []),
+            logins_by_person.get(key, []),
             key=lambda record: (record.timestamp, record.id),
         )
         matches = _logins_in_window(logins, claim)
@@ -38,16 +42,22 @@ def detect(records: list[Evidence]) -> list[Conflict]:
     return conflicts
 
 
+def _login_key(account: str, person: str) -> str:
+    """Return the hash key that keeps one person's account logins together."""
+    return account + _KEY_SEPARATOR + person
+
+
 def _group_logins(records: list[Evidence]) -> HashTable:
-    """Bucket login records by account."""
+    """Bucket login records by account and person."""
     grouped: HashTable = HashTable()
     for record in records:
         if record.record_type != "login" or not record.account:
             continue
-        bucket = grouped.get(record.account)
+        key = _login_key(record.account, record.person)
+        bucket = grouped.get(key)
         if bucket is None:
             bucket = []
-            grouped.put(record.account, bucket)
+            grouped.put(key, bucket)
         bucket.append(record)
     return grouped
 

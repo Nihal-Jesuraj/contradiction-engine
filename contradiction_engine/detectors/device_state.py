@@ -2,7 +2,9 @@
 
 Algorithm: group records by device with our HashTable, merge-sort each
 device's state records, treat each state as lasting until the next state, and
-binary-search the state that is active at each activity timestamp.
+binary-search the state that is active at each local activity or login
+timestamp. A login that names a device counts as local activity: the device had
+to be operational to process it.
 """
 
 from __future__ import annotations
@@ -12,17 +14,17 @@ from ..algorithms.sorting import merge_sort, upper_bound
 from ..models import Conflict, Evidence
 
 _RULES = {
-    "OFF": "A powered-off device cannot record a local activity.",
-    "SLEEP": "A sleeping device is not expected to record local activity.",
+    "OFF": "A powered-off device cannot record a local activity or login.",
+    "SLEEP": "A sleeping device is not expected to record local activity or logins.",
 }
 _SEVERITY = {"OFF": 0.90, "SLEEP": 0.55}
 
 
 def detect(records: list[Evidence]) -> list[Conflict]:
-    """Find activities recorded while their device is OFF or SLEEP.
+    """Find local activities or device logins while a device is OFF or SLEEP.
 
     Inputs: all evidence records.
-    Outputs: one conflict per offending activity.
+    Outputs: one conflict per offending activity or login.
     Complexity: O(n log n) time, O(n) space.
     """
     states_by_device, activities_by_device = _group_by_device(records)
@@ -46,13 +48,13 @@ def detect(records: list[Evidence]) -> list[Conflict]:
 def _group_by_device(
     records: list[Evidence],
 ) -> tuple[HashTable, HashTable]:
-    """Split state and activity records into per-device buckets."""
+    """Split state records and local activity/login records by device."""
     states: HashTable = HashTable()
     activities: HashTable = HashTable()
     for record in records:
         if record.record_type == "state" and record.device:
             _append(states, record.device, record)
-        elif record.record_type == "activity" and record.device:
+        elif record.record_type in ("activity", "login") and record.device:
             _append(activities, record.device, record)
     return states, activities
 
@@ -97,6 +99,7 @@ def _check_activity(
         numbers={
             "device": device,
             "state": state.state,
+            "record_type": activity.record_type,
             "activity_time": activity.timestamp.isoformat(),
             "state_since": state.timestamp.isoformat(),
             "state_until": ends_at.isoformat() if ends_at else "open-ended",
@@ -114,7 +117,7 @@ def _explain(
     minutes_into_state: float,
 ) -> str:
     """Build a short English explanation with the real timestamps."""
-    action = activity.action or "local activity"
+    action = _activity_label(activity)
     sentence = (
         f"Device {device} recorded '{action}' at {activity.timestamp}, "
         f"but it had been {state.state} since {state.timestamp} "
@@ -126,3 +129,12 @@ def _explain(
             "suspicious rather than impossible."
         )
     return sentence
+
+
+def _activity_label(activity: Evidence) -> str:
+    """Return a readable label for an activity or device login."""
+    if activity.action:
+        return activity.action
+    if activity.record_type == "login":
+        return "account login"
+    return "local activity"

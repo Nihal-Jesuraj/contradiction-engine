@@ -67,3 +67,25 @@ def test_invalid_edges_are_rejected() -> None:
         graph.add_edge("A", "B", -1)
     with pytest.raises(ValueError):
         graph.add_edge("A", "B", math.inf)
+
+
+def test_to_dot_marks_the_shortest_path() -> None:
+    """DOT output includes every road and highlights the requested route."""
+    graph = build_triangle()
+    dot = graph.to_dot(["A", "B", "C"])
+    assert dot.startswith("graph Map {")
+    assert '"A" -- "B" [label="2m", color="#d62728", penwidth=2];' in dot
+    assert '"A" -- "C" [label="10m"];' in dot
+
+
+def test_to_dot_escapes_quotes_and_backslashes() -> None:
+    """Uploaded names cannot break out of a DOT string literal."""
+    graph = WeightedGraph()
+    graph.add_edge('A"1', "B\\2", 1)
+    dot = graph.to_dot(['A"1', "B\\2"])
+    assert r'"A\"1" [label="A\"1"];' in dot
+    assert r'"B\\2" [label="B\\2"];' in dot
+    assert (
+        r'"A\"1" -- "B\\2" [label="1m", color="#d62728", penwidth=2];'
+        in dot
+    )

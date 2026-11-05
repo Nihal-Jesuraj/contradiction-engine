@@ -30,6 +30,18 @@ def activity(
     return Evidence(record_id, at(minute), "activity", device=device, action=action)
 
 
+def login(
+    record_id: str,
+    minute: int,
+    device: str = "D1",
+    person: str = "P1",
+    account: str = "A1",
+) -> Evidence:
+    """Build an account login that may name the local device."""
+    return Evidence(record_id, at(minute), "login",
+                    person=person, account=account, device=device)
+
+
 def test_clean_timeline_has_no_conflicts() -> None:
     records = [
         state("S1", 0, "ON"),
@@ -107,3 +119,34 @@ def test_devices_are_independent() -> None:
     ]
     conflicts = detect(records)
     assert [conflict.record_ids for conflict in conflicts] == [("A2", "S2")]
+
+
+def test_login_during_off_is_a_conflict() -> None:
+    """A login that names an OFF device is local activity."""
+    records = [
+        state("S1", 0, "ON"),
+        state("S2", 20, "OFF"),
+        login("L1", 30),
+    ]
+    conflicts = detect(records)
+    assert len(conflicts) == 1
+    conflict = conflicts[0]
+    assert conflict.record_ids == ("L1", "S2")
+    assert conflict.numbers["record_type"] == "login"
+    assert "'account login'" in conflict.explanation
+
+
+def test_login_during_on_is_clean() -> None:
+    """An operational device can process a login."""
+    records = [state("S1", 0, "ON"), login("L1", 10)]
+    assert detect(records) == []
+
+
+def test_login_without_a_device_is_ignored() -> None:
+    """A login with no device cannot be tied to a device state."""
+    records = [
+        state("S1", 0, "ON"),
+        state("S2", 20, "OFF"),
+        login("L1", 30, device=""),
+    ]
+    assert detect(records) == []

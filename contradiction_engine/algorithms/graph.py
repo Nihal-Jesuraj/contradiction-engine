@@ -89,6 +89,35 @@ class WeightedGraph:
         """Return True when the node exists."""
         return name in self._adjacency
 
+    def to_dot(self, highlight_path: list[str] | None = None) -> str:
+        """Render the road map as Graphviz DOT text.
+
+        Inputs: an optional node list whose consecutive edges are highlighted.
+        Outputs: DOT source accepted by ``st.graphviz_chart``.
+        Complexity: O(V + E) time and space.
+        """
+        route = highlight_path or []
+        highlighted = {
+            frozenset((first, second))
+            for first, second in zip(route, route[1:])
+        }
+        lines = ["graph Map {", "  overlap=false;"]
+        for node in self._adjacency:
+            lines.append(f'  "{_dot_safe(node)}" [label="{_dot_safe(node)}"];')
+        for first in self._adjacency:
+            for second, weight in self._adjacency[first]:
+                if first >= second:
+                    continue
+                attributes = f'label="{weight:g}m"'
+                if frozenset((first, second)) in highlighted:
+                    attributes += ', color="#d62728", penwidth=2'
+                lines.append(
+                    f'  "{_dot_safe(first)}" -- "{_dot_safe(second)}" '
+                    f"[{attributes}];"
+                )
+        lines.append("}")
+        return "\n".join(lines)
+
     def dijkstra(self, source: str) -> tuple[dict[str, float], dict[str, str]]:
         """Compute shortest distances from ``source`` to every reachable node.
 
@@ -146,3 +175,8 @@ class WeightedGraph:
                 return []
         path.reverse()
         return path
+
+
+def _dot_safe(text: str) -> str:
+    """Escape characters that would break a DOT string literal."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')

@@ -15,7 +15,7 @@ import streamlit as st
 
 from contradiction_engine.detectors import run_all_detectors
 from contradiction_engine.generator import GeneratorConfig, generate_case
-from contradiction_engine.loader import load_case
+from contradiction_engine.loader import case_variant_warnings, load_case
 from contradiction_engine.models import (
     Case,
     CaseIndex,
@@ -32,13 +32,16 @@ DETECTOR_HELP = {
     "location": "HashTable + merge sort + Dijkstra with a min-heap, cached per source. O(n log n + V(V+E) log V).",
     "message chronology": "Directed graph + one colouring DFS for cycles and topological order. O(V + E).",
     "interview claims": "HashTable + merge sort + binary-search bounds on the claim window. O(n log n + c log n).",
+    "location claims": "HashTable + merge sort + binary-search bounds + Dijkstra from the claimed place. O(n log n + V(V+E) log V).",
 }
 
 SCHEMA_HELP = """
 **CSV header** `id,timestamp,record_type,person,device,place,state,action,account,depends_on,claim,end_timestamp,text`
 - `state`: device, state ON/OFF/SLEEP · `activity`: device, action
 - `sighting`: person, place · `message`: person, optional depends_on
-- `login`: person, account · `claim`: person, account, claim=did_not_access, end_timestamp
+- `login`: person, account
+- `claim`: `did_not_access` needs person, account, end_timestamp; `claimed_at` needs person, place, end_timestamp
+  (`claimed_at` is checked at both window edges, not continuously)
 Timestamps are ISO-8601 (naive means UTC). Default places: Harbour, Station, Market, Clinic, Library, Dock, Park, Museum, Cafe, Warehouse.
 **places.json** `{"places": {"X": [51.5, -0.12], "Y": [51.51, -0.11]}, "edges": [["X", "Y", 4]]}`
 Two-value edges derive minutes with haversine; three-value edges set them.
@@ -94,16 +97,18 @@ def _generate_form() -> None:
     with st.form("generate"):
         seed = st.number_input("Seed", min_value=1, max_value=999999, value=42)
         people = st.slider("People", min_value=1, max_value=8, value=4)
-        columns = st.columns(4)
+        columns = st.columns(5)
         device_count = columns[0].slider("Device conflicts", 0, 5, 2)
         location_count = columns[1].slider("Location conflicts", 0, 5, 2)
         message_count = columns[2].slider("Message conflicts", 0, 5, 2)
         claim_count = columns[3].slider("Claim conflicts", 0, 5, 2)
+        location_claim_count = columns[4].slider("Location claims", 0, 5, 1)
         if st.form_submit_button("Generate case", type="primary"):
             generated = generate_case(GeneratorConfig(
                 seed=int(seed), people=int(people),
                 device_conflicts=int(device_count), location_conflicts=int(location_count),
-                message_conflicts=int(message_count), claim_conflicts=int(claim_count)))
+                message_conflicts=int(message_count), claim_conflicts=int(claim_count),
+                location_claim_conflicts=int(location_claim_count)))
             _store_case(generated.case)
             st.success(f"Generated {len(generated.case.records)} records.")
 
@@ -140,6 +145,8 @@ def _case_summary(case: Case) -> None:
     columns[1].metric("People", len(st.session_state.index.people()))
     columns[2].metric("Devices", len(st.session_state.index.devices()))
     columns[3].metric("Places", len(case.places))
+    for message in case_variant_warnings(case.records):
+        st.warning(message)
     st.download_button("Download case.csv", case_to_csv(case), "case.csv", "text/csv")
     st.download_button("Download ground_truth.json", truth_to_json(case), "ground_truth.json", "application/json")
     st.download_button("Download places.json", places_to_json(case), "places.json", "application/json")
@@ -174,8 +181,11 @@ def page_analyze() -> None:
 
 def _analysis_metrics(case: Case, conflicts: list[Conflict]) -> None:
     """Show record and per-kind conflict counts."""
-    kinds = ("device_state", "location", "message_order", "claim")
-    columns = st.columns(6)
+    kinds = (
+        "device_state", "location", "message_order",
+        "message_cycle", "claim", "claim_location",
+    )
+    columns = st.columns(len(kinds) + 2)
     columns[0].metric("Records", len(case.records))
     columns[1].metric("Conflicts", len(conflicts))
     for column, kind in zip(columns[2:], kinds):
@@ -231,8 +241,9 @@ def _render_help() -> None:
 
 def page_explorer() -> None:
     """Filter the case by entity, time range, and keyword."""
+    case = st.session_state.case
     index = st.session_state.index
-    if st.session_state.case is None:
+    if case is None:
         st.info("Generate or upload a case on the first page.")
         return
     if st.button("Reset filters"):
@@ -246,6 +257,8 @@ def page_explorer() -> None:
         _render_results(results)
     else:
         st.info("No records match these filters.")
+    _render_graph_views(case, index)
+    _render_index_diagnostics(index)
     _render_help()
 
 def _filter_records(index: CaseIndex) -> list[Evidence]:
@@ -292,6 +305,90 @@ def _render_results(results: list[Evidence]) -> None:
     )
     counts = days.groupby("day").size().reset_index(name="records")
     st.bar_chart(counts, x="day", y="records")
+
+
+def _render_graph_views(case: Case, index: CaseIndex) -> None:
+    """Show the road map and the entity-relationship graph."""
+    st.divider()
+    st.subheader("Relationship views")
+    map_tab, entity_tab = st.tabs(["Place map", "Entity graph"])
+    with map_tab:
+        _render_place_map(case)
+    with entity_tab:
+        _render_entity_graph(index)
+
+
+def _render_place_map(case: Case) -> None:
+    """Draw the sparse road map and highlight one shortest route."""
+    graph = case.graph()
+    places = graph.nodes()
+    columns = st.columns(2)
+    source = columns[0].selectbox("From place", places, key="map_from")
+    target = columns[1].selectbox(
+        "To place", places, index=min(1, len(places) - 1), key="map_to"
+    )
+    distances, previous = graph.dijkstra(source)
+    required = distances.get(target)
+    path = graph.shortest_path(previous, source, target)
+    if required is None:
+        st.warning("No route connects those places.")
+    else:
+        st.caption(
+            f"Shortest route: {' -> '.join(path)} · {required:.0f} minutes"
+        )
+    st.graphviz_chart(graph.to_dot(path), width="stretch")
+    with st.expander("How the place map works"):
+        st.write(
+            "Dijkstra expands the nearest unfinalized place using our own "
+            "binary min-heap. The red edges are the shortest route, which can "
+            "avoid a slower direct road. O((V + E) log V)."
+        )
+
+
+def _render_entity_graph(index: CaseIndex) -> None:
+    """Draw the entity graph around one start node using BFS."""
+    graph = index.evidence_graph
+    nodes = graph.nodes()
+    if not nodes:
+        st.info("No entities to graph.")
+        return
+    start = st.selectbox("Start entity", nodes, key="entity_start")
+    depth = st.slider("Hops", min_value=1, max_value=3, value=2,
+                      key="entity_depth")
+    related = graph.related(start, depth)
+    highlight = {start: 0}
+    highlight.update(related)
+    st.caption(f"{len(related)} entities within {depth} hop(s) of {start}.")
+    st.graphviz_chart(graph.to_dot(highlight), width="stretch")
+    if related:
+        rows = [
+            {"entity": node, "hops": hops}
+            for node, hops in related.items()
+        ]
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+    with st.expander("How the entity graph works"):
+        st.write(
+            "People, devices, accounts, and places are linked when they appear "
+            "in the same record. Breadth-first search with a deque finds every "
+            "entity within k hops. O(V + E)."
+        )
+
+
+def _render_index_diagnostics(index: CaseIndex) -> None:
+    """Show load factor and longest chain for each hash index."""
+    with st.expander("Hash index diagnostics"):
+        columns = st.columns(3)
+        tables = (
+            ("Person", index.person_index),
+            ("Device", index.device_index),
+            ("Account", index.account_index),
+        )
+        for column, (label, table) in zip(columns, tables):
+            column.metric(label, f"{len(table)} keys")
+            column.caption(
+                f"load factor {table.load_factor:.2f} · "
+                f"longest chain {table.longest_chain()}"
+            )
 
 
 if __name__ == "__main__":

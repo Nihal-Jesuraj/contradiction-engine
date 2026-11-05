@@ -21,13 +21,14 @@ def test_generated_case_reaches_perfect_precision_and_recall() -> None:
             location_conflicts=2,
             message_conflicts=2,
             claim_conflicts=2,
+            location_claim_conflicts=2,
         )
     )
     conflicts = run_all_detectors(
         generated.case.records, generated.case.graph()
     )
     score = score_conflicts(conflicts, generated.truth)
-    assert score.matched == score.planted == 8
+    assert score.matched == score.planted == 10
     assert score.precision == 1.0
     assert score.recall == 1.0
     assert score.f1 == 1.0
@@ -79,3 +80,25 @@ def test_invalid_upload_returns_errors_and_no_case() -> None:
     case, errors = load_case("upload.csv", data)
     assert case is None
     assert errors
+
+
+def test_uploaded_claimed_location_is_detected() -> None:
+    """A claimed_at row from CSV reaches the location-claim detector."""
+    rows = [
+        {"id": "S1", "timestamp": "2026-03-02T14:00:00Z",
+         "record_type": "sighting", "person": "P1", "place": "Library"},
+        {"id": "C1", "timestamp": "2026-03-02T13:57:00Z",
+         "record_type": "claim", "person": "P1", "place": "Harbour",
+         "claim": "claimed_at", "end_timestamp": "2026-03-02T14:03:00Z"},
+    ]
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=CSV_FIELDS, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({field: row.get(field, "") for field in CSV_FIELDS})
+    case, errors = load_case("upload.csv", buffer.getvalue().encode("utf-8"))
+    assert errors == []
+    assert case is not None
+    conflicts = run_all_detectors(case.records, case.graph())
+    assert [conflict.kind for conflict in conflicts] == ["claim_location"]
+    assert conflicts[0].record_ids == ("C1", "S1")

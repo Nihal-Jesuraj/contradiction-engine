@@ -79,3 +79,15 @@ def test_invalid_capacity_is_rejected() -> None:
     """A table needs at least one bucket."""
     with pytest.raises(ValueError):
         HashTable(capacity=0)
+
+
+def test_longest_chain_reports_the_largest_bucket() -> None:
+    """An empty table has no chain, and inserts are reflected in the report."""
+    table: HashTable = HashTable()
+    assert table.longest_chain() == 0
+    table.put("a", 1)
+    assert table.longest_chain() == 1
+    many: HashTable = HashTable(capacity=64)
+    for index in range(20):
+        many.put(f"key-{index}", index)
+    assert 1 <= many.longest_chain() <= 20

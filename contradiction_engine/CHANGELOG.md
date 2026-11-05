@@ -2,6 +2,46 @@
 
 All checkpoints from the ChronoClash refactor are recorded here.
 
+## 0.2.0 — 2026-11-06
+
+### Added
+
+- Person-scoped denied-access claims: `claims.detect` now groups logins by
+  `(account, person)`, so a colleague's login on a shared account no longer
+  contradicts the claimant.
+- Claim type `claimed_at` with fields `person`, `place`, and `end_timestamp`,
+  plus the `claim_location` detector. It binary-searches the claimed window and
+  compares the sighting's nearer window edge with the cached Dijkstra travel
+  time from the claimed place (a both-edges check, not continuous presence).
+- Device-state detector now treats a login that names a device as local
+  activity, so a login inside an `OFF`/`SLEEP` interval conflicts. The generator
+  alternates activity and login plants to cover both forms.
+- `algorithms/evidence_graph.py`: an undirected person/device/account/place
+  graph with a FIFO-queue BFS `related(start, depth)` and DOT export.
+- `WeightedGraph.to_dot` for the road map, with shortest-route highlighting, and
+  `HashTable.longest_chain` for collision diagnostics.
+- Evidence Explorer relationship views (place map and entity graph) and a hash
+  index diagnostics panel showing load factor and longest chain.
+- Generator support for `location_claim_conflicts` (default `0`) and an
+  isolated planted `claim_location` scenario; the UI slider defaults to `1`
+  so the new detector is visible.
+- Tests for person-scoped claims, claimed-location boundaries, device logins,
+  BFS depth and cycles, DOT escaping, case-variant warnings, hash diagnostics,
+  and the uploaded `claimed_at` path.
+
+### Changed
+
+- `claim` rows split their requirements by type: `did_not_access` needs an
+  `account`; `claimed_at` needs a `place`. Both need `person` and
+  `end_timestamp`.
+- `CONFLICT_KINDS` now includes `claim_location`; the Analyze page reports its
+  count alongside the other kinds.
+- The entity graph is built once by `CaseIndex`, not once per UI rerun.
+- README documents the five detectors, the new schema rows, the both-edges
+  claimed-location interpretation, project layout updates, complexity rows, and
+  viva notes. It also credits the external `forensics_engine.py` that inspired
+  several ideas; that file is not included in the repository.
+
 ## 0.1.0 — 2026-11-05
 
 ### Added

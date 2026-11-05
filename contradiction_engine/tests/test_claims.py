@@ -15,10 +15,15 @@ def at(minutes: int) -> datetime:
     return BASE + timedelta(minutes=minutes)
 
 
-def login(record_id: str, minute: int, account: str = "A1") -> Evidence:
+def login(
+    record_id: str,
+    minute: int,
+    account: str = "A1",
+    person: str = "P1",
+) -> Evidence:
     """Build one login record."""
     return Evidence(record_id, at(minute), "login",
-                    person="P1", account=account)
+                    person=person, account=account)
 
 
 def claim(
@@ -26,10 +31,11 @@ def claim(
     start: int,
     end: int,
     account: str = "A1",
+    person: str = "P1",
 ) -> Evidence:
     """Build one did_not_access claim."""
     return Evidence(
-        record_id, at(start), "claim", person="P1", account=account,
+        record_id, at(start), "claim", person=person, account=account,
         claim="did_not_access", end_timestamp=at(end),
     )
 
@@ -68,6 +74,18 @@ def test_login_outside_window_is_clean() -> None:
 def test_login_on_another_account_is_clean() -> None:
     records = [login("L1", 10, account="A2"), claim("C1", 0, 30, account="A1")]
     assert detect(records) == []
+
+
+def test_login_by_another_person_is_clean() -> None:
+    """A colleague using the same account does not contradict the claimant."""
+    records = [login("L1", 15, person="P2"), claim("C1", 0, 30, person="P1")]
+    assert detect(records) == []
+
+
+def test_login_by_the_claimant_is_flagged() -> None:
+    """The same person on the same account inside the window is a conflict."""
+    records = [login("L1", 15, person="P1"), claim("C1", 0, 30, person="P1")]
+    assert len(detect(records)) == 1
 
 
 def test_multiple_logins_produce_one_conflict() -> None:

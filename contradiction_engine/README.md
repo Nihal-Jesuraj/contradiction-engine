@@ -47,26 +47,58 @@ Run the tests from the repository root:
    explanation.
 3. **Evidence Explorer** — filter by person, device, or account (hash indexes),
    by time range (binary search), and by keyword (prefix trie). A simple bar
-   chart shows records per day.
+   chart shows records per day, and two relationship views render the road map
+   and the entity graph as Graphviz diagrams. A hash diagnostics panel shows
+   each index's load factor and longest chain.
 
 Each page has a **How this works** expander naming the algorithm and its
 complexity.
 
 ---
 
-## The four detectors
+## The five detectors
 
 | Detector | Question | Algorithm | Conflict kind |
 | --- | --- | --- | --- |
-| Device state | Did a device record local activity while OFF or SLEEP? | HashTable grouping, merge-sorted state intervals, binary search | `device_state` |
+| Device state | Did a device record local activity or a login while OFF or SLEEP? | HashTable grouping, merge-sorted state intervals, binary search | `device_state` |
 | Location | Did a person move faster than the shortest road route? | HashTable grouping, merge sort, Dijkstra with a min-heap, cached per source | `location` |
 | Message chronology | Is a reply timestamped before its parent, or do dependencies form a cycle? | Directed dependency graph, colouring DFS, topological order | `message_order`, `message_cycle` |
-| Interview claims | Did a denied-access claim overlap a real login? | HashTable grouping, merge sort, lower/upper binary-search bounds | `claim` |
+| Interview claims | Did a denied-access claim overlap a login **by that person**? | HashTable grouping by `(account, person)`, merge sort, lower/upper binary-search bounds | `claim` |
+| Claimed location | Was the person seen somewhere they could not reach and still be at the claimed place at both edges of the window? | HashTable grouping by person, merge sort, binary-search window bounds, cached Dijkstra from the claimed place | `claim_location` |
 
 An `OFF` conflict has severity `0.90`: a powered-off device cannot log a local
-action. A `SLEEP` conflict has severity `0.55` and says explicitly that sleep
-may still permit background wake events, so it is suspicious rather than
-impossible.
+activity or a login that names it. A `SLEEP` conflict has severity `0.55` and
+says explicitly that sleep may still permit background wake events, so it is
+suspicious rather than impossible.
+
+### Person-scoped denied-access claims
+
+A login contradicts `did_not_access` only when it belongs to the **same
+person** on the **same account**. Logins by colleagues who share an account are
+not evidence against the claimant. The detector keys its hash table on
+`account + "\x1f" + person` and binary-searches the closed claim window.
+
+### Claimed-location interpretation
+
+`claimed_at` is read as "I was at this place at **both the start and the end**
+of the window `[timestamp, end_timestamp]`". It is a travel-aware
+both-edges check, **not** a claim of continuous presence. A sighting elsewhere
+inside the window is a conflict when the travel time from the claimed place does
+not fit before the nearer edge of the window:
+
+```text
+margin = min(sighting - window_start, window_end - sighting)
+conflict when margin < shortest_travel_time(claimed_place, seen_place)
+```
+
+The nearest-edge test is deliberately conservative. If the person could have
+travelled between the claimed place and the sighting at that edge, the records
+are compatible. One consequence is explicit: a sighting at a neighbouring place
+in the middle of a long window passes, because the person could have been at the
+claimed place at both edges. Under a strict "throughout the window" reading that
+sighting would conflict instead. We chose the both-edges reading to avoid false
+positives. Sightings outside the window, at the same place, or at an unknown
+place are ignored, as is a claim at a place missing from the road map.
 
 ### Why checking only consecutive sightings is sound
 
@@ -98,8 +130,9 @@ the UI lists the first five reasons. The current case is never replaced.
 | `activity` | `device`, `action` | A local device action |
 | `sighting` | `person`, `place` | A person seen at a place |
 | `message` | `person` | Optional `depends_on` names the parent message |
-| `login` | `person`, `account` | An account login |
-| `claim` | `person`, `account`, `claim`, `end_timestamp` | Only `claim=did_not_access` is supported |
+| `login` | `person`, `account` | An account login; a non-empty `device` makes it local activity |
+| `claim` (`did_not_access`) | `person`, `account`, `claim`, `end_timestamp` | Denies accessing the account during the window |
+| `claim` (`claimed_at`) | `person`, `place`, `claim`, `end_timestamp` | Claims the place at both edges of the window |
 
 CSV header:
 
@@ -118,6 +151,7 @@ MSG-1,2026-03-02T10:00:00Z,message,P1,,,,,,,,,
 MSG-2,2026-03-02T10:05:00Z,message,P1,,,,,,,MSG-1,,
 LOG-1,2026-03-02T11:00:00Z,login,P1,,,,,A1,,,,,
 CLM-1,2026-03-02T12:00:00Z,claim,P1,,,,,A1,,did_not_access,2026-03-02T12:30:00Z,
+CLM-2,2026-03-02T13:00:00Z,claim,P1,,Harbour,,,,,,claimed_at,2026-03-02T13:10:00Z,
 ```
 
 Missing IDs receive a deterministic `UPL-<sha1-prefix>` value based on the row
@@ -135,7 +169,8 @@ IDs are rejected.
 ```
 
 Truth is used **only after** detection, by `score_conflicts`. Detectors receive
-`case.records` and, for location, a place graph; they never receive truth.
+`case.records` and, for the two location-aware detectors, a place graph; they
+never receive truth.
 
 ### Custom place map
 
@@ -182,14 +217,16 @@ contradiction_engine/
     hash_table.py               separate chaining, FNV-1a, resize at 0.75
     sorting.py                  stable merge sort, lower/upper bound
     min_heap.py                 binary min-heap
-    graph.py                    weighted graph + Dijkstra
+    graph.py                    weighted graph + Dijkstra + DOT export
     topo.py                     DFS cycle detection + topological order
     trie.py                     optional keyword prefix tree
+    evidence_graph.py           BFS entity graph + DOT export
   detectors/
     device_state.py
     location.py
     chronology.py
     claims.py
+    location_claims.py
   tests/
   README.md
   CHANGELOG.md
@@ -212,11 +249,13 @@ enforce this.
 | Min-heap push/pop | O(log n) | O(n) |
 | Dijkstra | O((V + E) log V) | O(V + E) |
 | DFS cycle detection / topological order | O(V + E) | O(V + E) |
+| BFS entity graph (`related`) | O(V + E) | O(V) |
 | Device detector | O(n log n) | O(n) |
 | Location detector | O(n log n + V(V+E) log V) | O(n + V + E) |
 | Chronology detector | O(V + E) | O(V + E) |
 | Claims detector | O(n log n + c log n + k) | O(n) |
-| Case index build | O(n log n + words) | O(n + words) |
+| Claimed-location detector | O(n log n + V(V+E) log V) | O(n + V + E) |
+| Case index build (hash indexes + trie + entity graph) | O(n log n + words + E) | O(n + words + E) |
 
 ---
 
@@ -270,14 +309,50 @@ A login exactly at the claim's start or end still contradicts "did not access
 during this period". `lower_bound(start)` and `upper_bound(end)` implement the
 closed interval.
 
+**Why does the claim detector key on account and person?**
+An account can be shared. A login by someone else does not contradict *this*
+person's denial, so grouping by `(account, person)` removes a false-positive
+class. The separator `\x1f` cannot occur in CSV text, so two different pairs can
+never collide into the same key.
+
+**Why does `claimed_at` use the nearer window edge?**
+The claim is read as "I was at the claimed place at both the start and the end
+of the window", not "I never left it". At either edge the person must be able to
+reach the claimed place from the sighting. If the sighting is near the start,
+the budget is `sighting - start`; near the end it is `end - sighting`. Taking
+the minimum is the strictest of the two. When the person could make the trip at
+that edge, the records are compatible. Be explicit about the gap: under a true
+"throughout the window" reading, any sighting elsewhere inside the window would
+conflict; this rule intentionally allows a middle sighting when both edges fit.
+
+**Why does a device login count as local activity?**
+A login that names a device is processed by that device, so it is evidence the
+device was operational. If the login falls inside an `OFF` interval, it is the
+same contradiction as a local action. Logins without a device stay account-only
+evidence and are not tied to a device state.
+
+**Why build an entity graph instead of filtering records?**
+The explorer already answers "which rows mention this entity?". The entity
+graph answers the different question "what is connected to this entity, and how
+far away is it?". One node per person, device, account, and place, plus links
+when they co-occur in a record, is enough. Breadth-first search with a FIFO
+`deque` visits each node and edge once, so `related(start, k)` is O(V + E).
+
+**How are the Graphviz diagrams drawn?**
+`WeightedGraph.to_dot` and `EvidenceGraph.to_dot` return plain DOT strings.
+`st.graphviz_chart` renders DOT in the browser, so the Python `graphviz` package
+is not needed. The road map labels every edge with its minutes and colours the
+chosen shortest route; the entity graph uses a shape per entity kind and colours
+nodes by hop distance from the selected start.
+
 **Why is ground truth never passed to a detector?**
 Otherwise the detector could simply read the answer. The generator returns
 truth separately; tests and the UI score conflicts after detection.
 
 **Why does SLEEP have lower severity than OFF?**
-A powered-off device cannot produce a local action. A sleeping device may still
-wake for background work, so the record is suspicious but not impossible. The
-explanation says this explicitly.
+A powered-off device cannot produce a local action or a device login. A sleeping
+device may still wake for background work, so the record is suspicious but not
+impossible. The explanation says this explicitly.
 
 ---
 
@@ -297,10 +372,30 @@ Coverage includes:
 - DAG, cycle, and self-loop topological cases;
 - every loader validation failure and first-five error ordering;
 - generator determinism and planted counts;
-- clean and planted cases for each detector;
+- clean and planted cases for each detector, including a login inside an OFF
+  interval;
+- person-scoped claims: a colleague's login on a shared account stays clean;
+- claimed-location windows: enough time, exactly enough time, too little time,
+  sightings outside the window, and unknown places;
+- the BFS entity graph on empty, linked, cyclic, depth-limited, and unknown-start
+  inputs, including DOT highlighting;
+- DOT escaping for names containing quotes and backslashes;
+- hash-table load factor and longest-chain diagnostics;
+- case-variant warnings for names that differ only by case;
+- an uploaded `claimed_at` row reaching the detector through the loader;
 - end-to-end recall **1.00**, precision **1.00**, and zero conflicts on a clean
   generated case;
 - an `ast` guard against forbidden imports and built-in sorting.
+
+---
+
+## Acknowledgements
+
+The person-scoped claim matching, the `claimed_at` idea, the BFS entity graph,
+and the hash load-factor/longest-chain diagnostics were inspired by an external
+`forensics_engine.py` file shared during the project. They were reimplemented
+from scratch to fit this project's hand-written-only constraints and test
+suite. The original file is not part of this repository.
 
 ---
 
@@ -311,5 +406,7 @@ Coverage includes:
   generated data by construction**, because plants are isolated; they are not a
   claim about arbitrary real evidence.
 - State, movement, and claims are simplified models, not a forensic standard.
+- Entity names are matched case-sensitively. The UI warns about uploads that
+  use spellings differing only by case; normalize them before relying on matches.
 - Everything is in memory; there is no database or authentication.
 - The tool supports an investigator. It does not determine guilt or deceit.

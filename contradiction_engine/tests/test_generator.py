@@ -69,3 +69,40 @@ def test_case_keeps_a_copy_of_the_truth_list() -> None:
     """The case exposes the same planted truth for display and scoring."""
     generated = generate_case(GeneratorConfig(seed=5))
     assert generated.case.ground_truth == generated.truth
+
+
+def test_location_claim_conflicts_are_planted() -> None:
+    """The claimed-location count is planted under its own conflict kind."""
+    generated = generate_case(
+        GeneratorConfig(
+            seed=42,
+            device_conflicts=0,
+            location_conflicts=0,
+            message_conflicts=0,
+            claim_conflicts=0,
+            location_claim_conflicts=2,
+        )
+    )
+    counts = Counter(entry.kind for entry in generated.truth)
+    assert counts == {"claim_location": 2}
+
+
+def test_device_conflicts_include_an_activity_and_a_login() -> None:
+    """With two device plants, one is a local activity and one a login."""
+    generated = generate_case(
+        GeneratorConfig(
+            seed=42,
+            device_conflicts=2,
+            location_conflicts=0,
+            message_conflicts=0,
+            claim_conflicts=0,
+            location_claim_conflicts=0,
+        )
+    )
+    records = {record.id: record for record in generated.case.records}
+    planted_types = {
+        records[entry.record_ids[0]].record_type
+        for entry in generated.truth
+        if entry.kind == "device_state"
+    }
+    assert planted_types == {"activity", "login"}

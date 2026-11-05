@@ -37,8 +37,43 @@ REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "sighting": ("person", "place"),
     "message": ("person",),
     "login": ("person", "account"),
-    "claim": ("person", "account", "claim", "end_timestamp"),
+    "claim": ("person", "claim", "end_timestamp"),
 }
+
+CLAIM_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "did_not_access": ("account",),
+    "claimed_at": ("place",),
+}
+
+ENTITY_FIELDS: tuple[str, ...] = ("person", "device", "account")
+
+
+def case_variant_warnings(records: list[Evidence]) -> list[str]:
+    """Report entity names that differ only by case.
+
+    Inputs: validated evidence records.
+    Outputs: one warning per case-insensitive duplicate spelling.
+    Complexity: O(n) time, O(n) space.
+    """
+    seen: dict[tuple[str, str], str] = {}
+    reported: set[tuple[str, str]] = set()
+    warnings: list[str] = []
+    for record in records:
+        for name in ENTITY_FIELDS:
+            value = getattr(record, name)
+            if not value:
+                continue
+            key = (name, value.casefold())
+            original = seen.get(key)
+            if original is None:
+                seen[key] = value
+            elif original != value and key not in reported:
+                reported.add(key)
+                warnings.append(
+                    f"{name} {original!r} and {value!r} differ only by case; "
+                    "matching is case-sensitive, so a conflict may be missed."
+                )
+    return warnings
 
 
 def parse_timestamp(value: str | datetime, label: str = "timestamp") -> datetime:
@@ -354,8 +389,20 @@ def _validate_row(
         raise ValueError(f"state must be one of {', '.join(DEVICE_STATES)}")
     if record_type == "sighting" and values["place"] not in places:
         raise ValueError(f"unknown place {values['place']!r}")
-    if record_type == "claim" and values["claim"] not in CLAIM_TYPES:
+    if record_type != "claim":
+        return
+    claim_type = values["claim"]
+    if claim_type not in CLAIM_TYPES:
         raise ValueError(f"claim must be one of {', '.join(CLAIM_TYPES)}")
+    claim_missing = [
+        field for field in CLAIM_REQUIRED_FIELDS[claim_type] if not values[field]
+    ]
+    if claim_missing:
+        raise ValueError(
+            "missing required field(s): " + ", ".join(claim_missing)
+        )
+    if claim_type == "claimed_at" and values["place"] not in places:
+        raise ValueError(f"unknown place {values['place']!r}")
 
 
 def _claim_end(values: dict[str, str], start: datetime) -> datetime:

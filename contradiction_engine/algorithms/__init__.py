@@ -8,4 +8,5 @@ Modules are added one step at a time:
 - ``graph``: weighted undirected graph and Dijkstra.
 - ``topo``: DFS cycle detection and topological order.
 - ``trie``: optional keyword/prefix search.
+- ``evidence_graph``: BFS entity graph and DOT export for the explorer.
 """

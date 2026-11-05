@@ -13,6 +13,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .algorithms.evidence_graph import EvidenceGraph
 from .algorithms.graph import WeightedGraph
 from .algorithms.hash_table import HashTable
 from .algorithms.sorting import lower_bound, merge_sort, upper_bound
@@ -27,13 +28,14 @@ RECORD_TYPES: tuple[str, ...] = (
     "claim",
 )
 DEVICE_STATES: tuple[str, ...] = ("ON", "OFF", "SLEEP")
-CLAIM_TYPES: tuple[str, ...] = ("did_not_access",)
+CLAIM_TYPES: tuple[str, ...] = ("did_not_access", "claimed_at")
 CONFLICT_KINDS: tuple[str, ...] = (
     "device_state",
     "location",
     "message_order",
     "message_cycle",
     "claim",
+    "claim_location",
 )
 CSV_FIELDS: tuple[str, ...] = (
     "id",
@@ -72,6 +74,7 @@ DEFAULT_PLACES: dict[str, tuple[float, float]] = {
 # Sixteen undirected roads. The Clinic-Park road deliberately takes 20 minutes,
 # even though Clinic-Library-Park takes 12, so Dijkstra has something to prove.
 # A weight of None means "derive it from the coordinates with haversine".
+# 16 undirected roads over the 10 default places.
 DEFAULT_ROADS: tuple[tuple[str, str, float | None], ...] = (
     ("Harbour", "Station", 6.0),
     ("Station", "Market", 5.0),
@@ -283,6 +286,42 @@ class Case:
         return build_place_graph(self.places, self.roads)
 
 
+def build_evidence_graph(records: list[Evidence]) -> EvidenceGraph:
+    """Link people, devices, accounts, and places that co-occur in evidence.
+
+    Inputs: normalized evidence records.
+    Outputs: an undirected entity graph.
+    Complexity: O(n + E) time and space for n records and E links.
+    """
+    graph = EvidenceGraph()
+    for record in records:
+        person = _entity("person", record.person)
+        device = _entity("device", record.device)
+        account = _entity("account", record.account)
+        place = _entity("place", record.place)
+        if person and device:
+            graph.link(person, device)
+        if device and account:
+            graph.link(device, account)
+        if person and account:
+            graph.link(person, account)
+        if person and place:
+            graph.link(person, place)
+    by_id = {record.id: record for record in records}
+    for record in records:
+        if record.record_type != "message" or not record.depends_on:
+            continue
+        parent = by_id.get(record.depends_on)
+        if parent is None or not record.person or not parent.person:
+            continue
+        if parent.person != record.person:
+            graph.link(
+                _entity("person", record.person),
+                _entity("person", parent.person),
+            )
+    return graph
+
+
 @dataclass(frozen=True)
 class Score:
     """Precision/recall summary. ``available`` is False when no truth exists."""
@@ -360,6 +399,7 @@ class CaseIndex:
             _index_add(self.account_index, record.account, record)
             for word in _search_words(record):
                 self._trie.insert(word, record.id)
+        self.evidence_graph = build_evidence_graph(self.records)
 
     def people(self) -> list[str]:
         """Return non-empty person names in sorted order."""
@@ -427,6 +467,13 @@ def _index_add(
         bucket = []
         table.put(key, bucket)
     bucket.append(record)
+
+
+def _entity(kind: str, name: str) -> str:
+    """Return a labelled graph node, or an empty string for a blank name."""
+    if not name:
+        return ""
+    return f"{kind}:{name}"
 
 
 def _search_words(record: Evidence) -> list[str]:

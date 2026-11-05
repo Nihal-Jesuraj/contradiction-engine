@@ -116,8 +116,8 @@ conflict of the same kind whose IDs contain all truth IDs. Empty truth reports
 
 ### 5.1 Place map
 
-The default road network is **sparse**: 10 fictional places, 14–16 undirected
-edges, connected but far from complete. Because it is sparse, the Dijkstra
+The default road network is **sparse**: 10 fictional places, 16 undirected
+roads, connected but far from complete. Because it is sparse, the Dijkstra
 shortest route between two places can differ from the direct edge, which makes
 the algorithm worth demonstrating. At least one pair must have a direct road
 that is slower than a two-hop route. Haversine-derived weights obey the triangle
@@ -315,7 +315,7 @@ data by construction**, not for arbitrary real evidence.
 | Risk | Decision |
 | --- | --- |
 | lat/lon records vs named-place graph | fixed sparse 10-place graph; document deviation |
-| sparse graph and Dijkstra | 14–16 edges; test a route shorter than the direct edge |
+| sparse graph and Dijkstra | 16 edges; test a route shorter than the direct edge |
 | topo sort choice | DFS cycle detection + reversed postorder, one traversal |
 | "write ground truth to file" | generator returns it; UI downloads it |
 | optional trie | last; omit if it harms clarity |
