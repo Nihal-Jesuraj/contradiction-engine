@@ -152,18 +152,21 @@ def page_header(title: str, description: str) -> None:
 
 
 def hero_strip() -> None:
-    """Render the three-step workflow strip."""
+    """Render the three-step workflow strip with directional arrows."""
     steps = (
-        ("01", "Generate or upload"),
-        ("02", "Analyze"),
-        ("03", "Explore"),
+        ("1", "Generate or upload"),
+        ("2", "Analyze"),
+        ("3", "Explore"),
     )
-    columns = st.columns(len(steps))
-    for column, (number, label) in zip(columns, steps):
-        with column:
-            with st.container(border=True):
-                st.caption(number)
-                st.write(label)
+    with st.container(border=True):
+        columns = st.columns([1, 0.18, 1, 0.18, 1])
+        for index, (number, label) in enumerate(steps):
+            with columns[index * 2]:
+                st.caption(f"Step {number}")
+                st.write(f"**{number}** · {label}")
+            if index < len(steps) - 1:
+                with columns[index * 2 + 1]:
+                    st.write("→")
 
 
 def severity_word(severity: float) -> tuple[str, str]:

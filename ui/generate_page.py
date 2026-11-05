@@ -13,7 +13,7 @@ from contradiction_engine.models import (
     truth_to_json,
 )
 
-from .widgets import page_header, store_case
+from .widgets import hero_strip, page_header, store_case
 
 SCHEMA_HELP = """
 **CSV header** `id,timestamp,record_type,person,device,place,state,action,account,depends_on,claim,end_timestamp,text`
@@ -34,12 +34,29 @@ def render_generate_page() -> None:
         "Generate or upload",
         "Start with a seeded fictional case or bring your own evidence files.",
     )
+    hero_strip()
+    _demo_row()
     with st.container(border=True):
         _generate_form()
     _upload_form()
     with st.expander("Upload schema and example"):
         st.markdown(SCHEMA_HELP)
     _case_summary()
+
+
+def _demo_row() -> None:
+    """Render the one-click demo case action."""
+    left, right = st.columns([1, 3])
+    with left:
+        if st.button("Load demo case", type="secondary"):
+            _load_demo()
+    with right:
+        st.caption("Seeded demo with default generation settings (seed 42).")
+
+
+def _load_demo() -> None:
+    """Generate and store the default demo case."""
+    _load_generated(GeneratorConfig(), source="Demo · seed 42")
 
 
 def _generate_form() -> None:
@@ -67,20 +84,29 @@ def _generate_form() -> None:
             )
 
 
-def _load_generated(config: GeneratorConfig) -> None:
+def _load_generated(
+    config: GeneratorConfig,
+    source: str | None = None,
+) -> None:
     """Generate and store a case with its visible settings as the source."""
     generated = generate_case(config)
-    store_case(generated.case, f"Generated · seed {config.seed}")
+    label = source or f"Generated · seed {config.seed}"
+    store_case(generated.case, label)
     st.success(f"Generated {len(generated.case.records)} records.")
 
 
 def _upload_form() -> None:
-    """Render the CSV/JSON upload form."""
+    """Render the upload form with optional files collapsed by default."""
     with st.expander("Upload a case", expanded=False):
         with st.form("upload"):
             upload = st.file_uploader("Case CSV or JSON", type=["csv", "json"])
-            truth = st.file_uploader("Optional ground truth JSON", type=["json"])
-            places = st.file_uploader("Optional places JSON", type=["json"])
+            with st.expander("Optional ground truth and places files"):
+                truth = st.file_uploader(
+                    "Optional ground truth JSON", type=["json"]
+                )
+                places = st.file_uploader(
+                    "Optional places JSON", type=["json"]
+                )
             if st.form_submit_button("Load case"):
                 _load_upload(upload, truth, places)
 

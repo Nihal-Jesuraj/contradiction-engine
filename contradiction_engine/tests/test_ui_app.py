@@ -31,7 +31,8 @@ def test_all_pages_render_without_exceptions() -> None:
 def test_generate_then_analyze_then_explore() -> None:
     """The full generate, analyze, and explore journey stays healthy."""
     app = _app()
-    app.button[0].click().run()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
     assert not app.exception
 
     app = _go(app, "Analyze & Conflicts")
