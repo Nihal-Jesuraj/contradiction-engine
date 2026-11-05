@@ -64,3 +64,26 @@ def test_readable_conflict_labels_are_used() -> None:
     labels = {slider.label for slider in _app().slider}
     assert "Impossible-travel conflicts" in labels
     assert "Claimed-place conflicts" in labels
+
+
+def test_explorer_has_three_tabs() -> None:
+    """The explorer groups its views into Records, Relationships, Diagnostics."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Evidence Explorer")
+    labels = [tab.label for tab in app.tabs]
+    assert {"Records", "Relationships", "Diagnostics"} <= set(labels)
+    assert not app.exception
+
+
+def test_status_tiles_appear_after_analyze() -> None:
+    """The STATUS grid shows only once ANALYZE has run."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Analyze & Conflicts")
+    assert "Status" not in [caption.value for caption in app.caption]
+    next(button for button in app.button if button.label == "ANALYZE").click().run()
+    assert "Status" in [caption.value for caption in app.caption]
+    assert not app.exception

@@ -139,6 +139,16 @@ hr {
 div[data-testid="stVerticalBlock"] {
   gap: 0.55rem;
 }
+[class*="st-key-tile_"] {
+  border: 1px solid var(--hud-line);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  background: rgba(22, 27, 38, 0.55);
+}
+[class*="st-key-tile_high"] { border-color: #F87171; }
+[class*="st-key-tile_medium"] { border-color: #FBBF24; }
+[class*="st-key-tile_low"] { border-color: #8B98A9; }
+[class*="st-key-tile_clear"] { border-color: #2DD4BF; }
 </style>
 """
 

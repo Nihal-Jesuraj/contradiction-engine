@@ -14,6 +14,15 @@ All checkpoints from the ChronoClash refactor are recorded here.
   road-map route graph for travel/claimed-place conflicts; state timeline for
   "Device was off"; detector docs expander.
 
+### Added (UI only)
+
+- Evidence Explorer tabs (Records / Relationships / Diagnostics), combined
+  person, device, account, date-range and keyword filters, a records-per-hour
+  (or per-type) chart that hides when there is nothing to compare.
+- STATUS tile grid on the Analyze page; tile border colour is the worst
+  severity of any conflict involving that person or device.
+- Future work: the optional EVIDENCE canvas (Phase 3) is not implemented.
+
 ## 0.2.0 — 2026-11-06
 
 ### Added

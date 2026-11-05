@@ -11,6 +11,7 @@ import streamlit as st
 from contradiction_engine.detectors import run_all_detectors
 from contradiction_engine.models import Case, Conflict, score_conflicts
 
+from .status_tiles import render_status_tiles
 from .widgets import (
     KIND_LABELS,
     RECORD_TYPE_LABELS,
@@ -68,6 +69,7 @@ def _render_results() -> None:
     conflicts = st.session_state.conflicts
     _render_kpis(len(case.records), conflicts)
     _render_score()
+    render_status_tiles(case, conflicts)
     if conflicts:
         _render_conflicts(case, conflicts)
     else:
