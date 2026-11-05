@@ -1,5 +1,0 @@
-events_requested,events,status,entity_count,planted_conflicts,generate_ms,normalize_ms,index_build_ms,detector_total_ms,constraint_graph_ms,ranking_ms,gap_scan_ms,full_analysis_ms,naive_ms,tree_simultaneity_pairs,tree_speedup_vs_naive,graph_nodes,graph_edges,bellman_ford_ms,incremental_ms,floyd_warshall_ms,precision,recall,f1,tp,fp,fn,generation_peak_mb,index_peak_mb,peak_traced_mb,events_per_sec
-1000,1000,ok,23,8,266.826,63.572,11.426,71.935,1.67,1.66,12.821,88.086,104.929,3,4.06,51,153,28.69,28.423,525.392,1.0,1.0,1.0,8,0,0,0.537,1.066,1.311,11352.5
-10000,10000,ok,58,8,3044.538,1414.014,251.262,744.744,8.035,1.381,213.987,968.147,4126.554,3,12.44,120,360,231.781,239.751,8785.518,1.0,1.0,1.0,8,0,0,4.761,10.022,11.625,10329.0
-100000,100000,ok,104,8,60175.683,14819.009,3664.112,7508.686,73.649,28.588,622.251,8233.174,,3,,160,480,256.56,241.134,26290.764,1.0,1.0,1.0,8,0,0,49.492,102.867,111.894,12146.0
-1000000,1000000,ok,104,8,441287.934,151830.931,49666.374,278031.02,863.132,188.962,8525.643,287608.757,,3,,160,480,413.165,699.151,24661.782,1.0,1.0,1.0,8,0,0,486.703,1013.451,1095.839,3476.9
