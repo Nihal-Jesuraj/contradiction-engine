@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+
 import streamlit as st
 
 from contradiction_engine.generator import GeneratorConfig, generate_case
@@ -13,7 +15,11 @@ from contradiction_engine.models import (
     truth_to_json,
 )
 
+from .export import safe_csv
 from .widgets import hero_strip, page_header, store_case
+
+NEAR_LIMIT_BYTES = 4 * 1024 * 1024
+LARGE_CASE_RECORDS = 5000
 
 SCHEMA_HELP = """
 **CSV header** `id,timestamp,record_type,person,device,place,state,action,account,depends_on,claim,end_timestamp,text`
@@ -98,6 +104,10 @@ def _load_generated(
 def _upload_form() -> None:
     """Render the upload form with optional files collapsed by default."""
     with st.expander("Upload a case", expanded=False):
+        st.caption(
+            "Use only fictional or anonymised data. Uploads are processed in "
+            "memory for this session and are not saved by this app."
+        )
         with st.form("upload"):
             upload = st.file_uploader("Case CSV or JSON", type=["csv", "json"])
             with st.expander("Optional ground truth and places files"):
@@ -116,7 +126,9 @@ def _load_upload(upload: object, truth: object, places: object) -> None:
     if upload is None:
         st.error("Choose a CSV or JSON file first.")
         return
-    case, errors = load_case(
+    if upload.size > NEAR_LIMIT_BYTES:
+        st.caption("This file is close to the 5 MB upload limit.")
+    case, errors = safe_load_case(
         upload.name,
         upload.getvalue(),
         truth.getvalue() if truth else None,
@@ -129,6 +141,19 @@ def _load_upload(upload: object, truth: object, places: object) -> None:
         return
     store_case(case, f"Upload · {upload.name}")
     st.success(f"Loaded {len(case.records)} records.")
+    if len(case.records) > LARGE_CASE_RECORDS:
+        st.warning("Large case: pages with many conflicts may load slowly.")
+
+
+def safe_load_case(
+    name: str, data: bytes, truth: bytes | None = None,
+    places: bytes | None = None,
+) -> tuple[Case | None, list[str]]:
+    """Run the loader, turning unexpected parser errors into messages."""
+    try:
+        return load_case(name, data, truth, places)
+    except (csv.Error, UnicodeError, ValueError, KeyError) as error:
+        return None, [f"file: could not be read ({str(error)[:100]})"]
 
 
 def _case_summary() -> None:
@@ -159,7 +184,7 @@ def _render_downloads(case: Case) -> None:
     """Render the three case download buttons."""
     left, middle, right = st.columns(3)
     left.download_button(
-        "Download case.csv", case_to_csv(case), "case.csv", "text/csv"
+        "Download case.csv", safe_csv(case_to_csv(case)), "case.csv", "text/csv"
     )
     middle.download_button(
         "Download ground_truth.json",

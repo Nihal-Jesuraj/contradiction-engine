@@ -1,4 +1,4 @@
-[theme]
+[theme.dark]
 base = "dark"
 primaryColor = "#2DD4BF"
 backgroundColor = "#0E1117"
@@ -6,8 +6,17 @@ secondaryBackgroundColor = "#161B26"
 textColor = "#E6EDF3"
 font = "sans serif"
 
+[theme.light]
+base = "light"
+primaryColor = "#0D9488"
+backgroundColor = "#F6F8FA"
+secondaryBackgroundColor = "#E8EDF3"
+textColor = "#1F2937"
+font = "sans serif"
+
 [server]
 maxUploadSize = 5
 
 [client]
-toolbarMode = "minimal"
+# "viewer" hides Deploy and developer items but keeps Settings (theme switch).
+toolbarMode = "viewer"

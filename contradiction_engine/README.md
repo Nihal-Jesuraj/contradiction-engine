@@ -27,6 +27,17 @@ streamlit run app.py
 
 Open <http://127.0.0.1:8501>. There is no backend service and no Node.js step.
 
+**Theme:** open the menu at the top right, choose Settings, and pick Light, Dark
+or "Use system setting".
+
+### Two-minute demo
+
+1. Generate / Upload: press **Load demo case**.
+2. Analyze & Conflicts: press **ANALYZE**; read the KPIs, the STATUS tiles and
+   the conflict tabs (open one card to show records, rule, numbers, route).
+3. Evidence Explorer: filter by person, then open Relationships and Diagnostics.
+4. Download `case.csv` (formula-like cells are neutralised with a leading quote).
+
 Run the tests from the repository root:
 
 ```bash

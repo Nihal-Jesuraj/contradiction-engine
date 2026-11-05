@@ -10,14 +10,6 @@ import streamlit as st
 
 THEME_CSS = """
 <style>
-:root {
-  --hud-bg: #0E1117;
-  --hud-panel: #161B26;
-  --hud-text: #E6EDF3;
-  --hud-muted: #8B98A9;
-  --hud-line: rgba(230, 237, 243, 0.12);
-  --hud-accent: #2DD4BF;
-}
 .stApp {
   background: var(--hud-bg);
   color: var(--hud-text);
@@ -27,7 +19,7 @@ THEME_CSS = """
   border-right: 1px solid var(--hud-line);
 }
 [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {
-  background: rgba(14, 17, 23, 0.55);
+  background: var(--hud-sidebar-tint);
 }
 h1, h2, h3 {
   letter-spacing: 0.01em;
@@ -55,7 +47,7 @@ p, li, label, .stMarkdown {
 [data-testid="stVerticalBlockBorderWrapper"] {
   border: 1px solid var(--hud-line);
   border-radius: 8px;
-  background: rgba(22, 27, 38, 0.55);
+  background: var(--hud-card);
   padding: 0.85rem 0.95rem;
 }
 [data-testid="stMetricValue"] {
@@ -78,7 +70,7 @@ p, li, label, .stMarkdown {
 [data-testid="stExpander"] details {
   border: 1px solid var(--hud-line);
   border-radius: 8px;
-  background: rgba(22, 27, 38, 0.45);
+  background: var(--hud-card-soft);
 }
 [data-testid="stExpander"] summary {
   letter-spacing: 0.02em;
@@ -110,13 +102,13 @@ p, li, label, .stMarkdown {
 .stButton > button[kind="primary"] {
   background: var(--hud-accent);
   border-color: var(--hud-accent);
-  color: #0E1117;
+  color: var(--hud-on-accent);
   font-weight: 700;
 }
 .stButton > button[kind="primary"]:hover {
-  background: #5EEAD4;
-  border-color: #5EEAD4;
-  color: #0E1117;
+  background: var(--hud-accent-hover);
+  border-color: var(--hud-accent-hover);
+  color: var(--hud-on-accent);
 }
 [data-testid="stForm"] {
   border: 1px solid var(--hud-line);
@@ -143,7 +135,7 @@ div[data-testid="stVerticalBlock"] {
   border: 1px solid var(--hud-line);
   border-radius: 8px;
   padding: 0.5rem 0.7rem;
-  background: rgba(22, 27, 38, 0.55);
+  background: var(--hud-card);
 }
 [class*="st-key-tile_high"] { border-color: #F87171; }
 [class*="st-key-tile_medium"] { border-color: #FBBF24; }
@@ -151,6 +143,38 @@ div[data-testid="stVerticalBlock"] {
 [class*="st-key-tile_clear"] { border-color: #2DD4BF; }
 </style>
 """
+
+
+PALETTES = {
+    "dark": """:root {
+  --hud-bg: #0E1117; --hud-panel: #161B26; --hud-text: #E6EDF3;
+  --hud-muted: #8B98A9; --hud-line: rgba(230, 237, 243, 0.12);
+  --hud-accent: #2DD4BF; --hud-accent-hover: #5EEAD4; --hud-on-accent: #0E1117;
+  --hud-sidebar-tint: rgba(14, 17, 23, 0.55);
+  --hud-card: rgba(22, 27, 38, 0.55); --hud-card-soft: rgba(22, 27, 38, 0.45);
+}""",
+    "light": """:root {
+  --hud-bg: #F6F8FA; --hud-panel: #FFFFFF; --hud-text: #1F2937;
+  --hud-muted: #5B6778; --hud-line: rgba(31, 41, 55, 0.16);
+  --hud-accent: #0D9488; --hud-accent-hover: #14B8A6; --hud-on-accent: #FFFFFF;
+  --hud-sidebar-tint: rgba(255, 255, 255, 0.7);
+  --hud-card: rgba(255, 255, 255, 0.85); --hud-card-soft: rgba(255, 255, 255, 0.7);
+}""",
+}
+
+
+def build_css(theme_type: str | None) -> str:
+    """Return the fixed stylesheet with the palette for the active theme."""
+    palette = PALETTES.get(theme_type or "dark", PALETTES["dark"])
+    return THEME_CSS.replace("<style>", "<style>\n" + palette, 1)
+
+
+def _theme_type() -> str:
+    """Return Streamlit's active theme type, defaulting to dark."""
+    try:
+        return st.context.theme.type or "dark"
+    except Exception:  # noqa: BLE001 - theme info is optional
+        return "dark"
 
 
 def configure_page() -> None:
@@ -161,4 +185,4 @@ def configure_page() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    st.markdown(THEME_CSS, unsafe_allow_html=True)
+    st.markdown(build_css(_theme_type()), unsafe_allow_html=True)

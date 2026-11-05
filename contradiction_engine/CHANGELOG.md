@@ -25,6 +25,17 @@ All checkpoints from the Contradiction Engine rebuild are recorded here.
   severity of any conflict involving that person or device.
 - Future work: the optional EVIDENCE canvas (Phase 3) is not implemented.
 
+### Fixed (UI only)
+
+- An oversized CSV field no longer crashes the upload; it is reported like any
+  other rejected file.
+- Downloaded case.csv neutralises cells that start with `=`, `+`, `-`, `@`,
+  tab or CR (a leading quote is added) so a spreadsheet cannot run them.
+- Theme switching is back: `toolbarMode = "viewer"` keeps the Settings menu,
+  and `config.toml` defines separate light and dark themes.
+- Added a privacy note on upload, a near-limit file note, and a large-case
+  warning above 5,000 records.
+
 ## 0.2.0 — 2026-11-06
 
 ### Added
