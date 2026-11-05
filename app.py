@@ -20,6 +20,7 @@ from contradiction_engine.models import (
     Case,
     CaseIndex,
     Conflict,
+    Evidence,
     case_to_csv,
     places_to_json,
     score_conflicts,
@@ -34,24 +35,14 @@ DETECTOR_HELP = {
 }
 
 SCHEMA_HELP = """
-**CSV header**
-`id,timestamp,record_type,person,device,place,state,action,account,depends_on,claim,end_timestamp,text`
-
-- `state`: device, state in ON / OFF / SLEEP
-- `activity`: device, action
-- `sighting`: person, place
-- `message`: person, optional depends_on
-- `login`: person, account
-- `claim`: person, account, claim=did_not_access, end_timestamp
-
-Timestamps are ISO-8601 (naive means UTC). Default places: Harbour, Station,
-Market, Clinic, Library, Dock, Park, Museum, Cafe, Warehouse.
-
-**places.json**
-`{"places": {"X": [51.5, -0.12], "Y": [51.51, -0.11]}, "edges": [["X", "Y", 4]]}`
+**CSV header** `id,timestamp,record_type,person,device,place,state,action,account,depends_on,claim,end_timestamp,text`
+- `state`: device, state ON/OFF/SLEEP · `activity`: device, action
+- `sighting`: person, place · `message`: person, optional depends_on
+- `login`: person, account · `claim`: person, account, claim=did_not_access, end_timestamp
+Timestamps are ISO-8601 (naive means UTC). Default places: Harbour, Station, Market, Clinic, Library, Dock, Park, Museum, Cafe, Warehouse.
+**places.json** `{"places": {"X": [51.5, -0.12], "Y": [51.51, -0.11]}, "edges": [["X", "Y", 4]]}`
 Two-value edges derive minutes with haversine; three-value edges set them.
 """
-
 
 def main() -> None:
     """Configure the page and route to one of the three pages."""
@@ -74,14 +65,12 @@ def main() -> None:
     else:
         page_explorer()
 
-
 def _init_state() -> None:
     """Create the session keys used by all pages."""
     defaults = {"case": None, "index": None, "conflicts": [], "score": None}
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
-
 
 def _store_case(case: Case) -> None:
     """Replace the active case and clear any previous analysis."""
@@ -90,9 +79,17 @@ def _store_case(case: Case) -> None:
     st.session_state.conflicts = []
     st.session_state.score = None
 
-
 def page_generate() -> None:
     """Generate or upload a case, then show a summary and downloads."""
+    _generate_form()
+    _upload_form()
+    with st.expander("Upload schema and example"):
+        st.markdown(SCHEMA_HELP)
+    if st.session_state.case is not None:
+        _case_summary(st.session_state.case)
+
+def _generate_form() -> None:
+    """Render the seeded generator form."""
     st.subheader("Generate a fictional case")
     with st.form("generate"):
         seed = st.number_input("Seed", min_value=1, max_value=999999, value=42)
@@ -110,6 +107,8 @@ def page_generate() -> None:
             _store_case(generated.case)
             st.success(f"Generated {len(generated.case.records)} records.")
 
+def _upload_form() -> None:
+    """Render the CSV/JSON upload form."""
     st.subheader("Or upload a case")
     with st.form("upload"):
         upload = st.file_uploader("Case CSV or JSON", type=["csv", "json"])
@@ -132,12 +131,8 @@ def page_generate() -> None:
                     _store_case(case)
                     st.success(f"Loaded {len(case.records)} records.")
 
-    with st.expander("Upload schema and example"):
-        st.markdown(SCHEMA_HELP)
-
-    case = st.session_state.case
-    if case is None:
-        return
+def _case_summary(case: Case) -> None:
+    """Show record counts and download buttons for the active case."""
     st.divider()
     st.subheader(case.name)
     columns = st.columns(4)
@@ -148,7 +143,6 @@ def page_generate() -> None:
     st.download_button("Download case.csv", case_to_csv(case), "case.csv", "text/csv")
     st.download_button("Download ground_truth.json", truth_to_json(case), "ground_truth.json", "application/json")
     st.download_button("Download places.json", places_to_json(case), "places.json", "application/json")
-
 
 def page_analyze() -> None:
     """Run the detectors and explain one selected conflict."""
@@ -161,14 +155,7 @@ def page_analyze() -> None:
         st.session_state.conflicts = conflicts
         st.session_state.score = score_conflicts(conflicts, case.ground_truth)
     conflicts = st.session_state.conflicts
-
-    kinds = ("device_state", "location", "message_order", "claim")
-    columns = st.columns(6)
-    columns[0].metric("Records", len(case.records))
-    columns[1].metric("Conflicts", len(conflicts))
-    for column, kind in zip(columns[2:], kinds):
-        column.metric(kind, sum(1 for c in conflicts if c.kind == kind))
-
+    _analysis_metrics(case, conflicts)
     score = st.session_state.score
     if score is not None and score.available:
         st.write(
@@ -182,28 +169,38 @@ def page_analyze() -> None:
             "under the stated rules, not that they are true."
         )
     else:
-        table = [
-            {
-                "kind": conflict.kind,
-                "severity": conflict.severity,
-                "records": ", ".join(conflict.record_ids),
-                "rule": conflict.rule_text,
-                "explanation": conflict.explanation,
-            }
-            for conflict in conflicts
-        ]
-        st.dataframe(pd.DataFrame(table), width="stretch",
-                     hide_index=True)
-        choice = st.selectbox(
-            "Inspect a conflict", range(len(conflicts)),
-            format_func=lambda index: (
-                f"{conflicts[index].kind}: "
-                + ", ".join(conflicts[index].record_ids)
-            ),
-        )
-        _render_conflict(case, conflicts[choice])
+        _conflict_table(case, conflicts)
     _render_help()
 
+def _analysis_metrics(case: Case, conflicts: list[Conflict]) -> None:
+    """Show record and per-kind conflict counts."""
+    kinds = ("device_state", "location", "message_order", "claim")
+    columns = st.columns(6)
+    columns[0].metric("Records", len(case.records))
+    columns[1].metric("Conflicts", len(conflicts))
+    for column, kind in zip(columns[2:], kinds):
+        column.metric(kind, sum(1 for conflict in conflicts if conflict.kind == kind))
+
+def _conflict_table(case: Case, conflicts: list[Conflict]) -> None:
+    """Show the conflict table and the selected conflict's detail."""
+    table = [
+        {
+            "kind": conflict.kind,
+            "severity": conflict.severity,
+            "records": ", ".join(conflict.record_ids),
+            "rule": conflict.rule_text,
+            "explanation": conflict.explanation,
+        }
+        for conflict in conflicts
+    ]
+    st.dataframe(pd.DataFrame(table), width="stretch", hide_index=True)
+    choice = st.selectbox(
+        "Inspect a conflict", range(len(conflicts)),
+        format_func=lambda index: (
+            f"{conflicts[index].kind}: " + ", ".join(conflicts[index].record_ids)
+        ),
+    )
+    _render_conflict(case, conflicts[choice])
 
 def _render_conflict(case: Case, conflict: Conflict) -> None:
     """Show the conflicting records next to the rule and the numbers."""
@@ -226,13 +223,11 @@ def _render_conflict(case: Case, conflict: Conflict) -> None:
         ]
         st.table(pd.DataFrame(numbers))
 
-
 def _render_help() -> None:
     """Show one 'How this works' panel per detector."""
     for title, text in DETECTOR_HELP.items():
         with st.expander(f"How {title} detection works"):
             st.write(text)
-
 
 def page_explorer() -> None:
     """Filter the case by entity, time range, and keyword."""
@@ -240,14 +235,21 @@ def page_explorer() -> None:
     if st.session_state.case is None:
         st.info("Generate or upload a case on the first page.")
         return
-    first = index.records[0].timestamp.date()
-    last = index.records[-1].timestamp.date()
     if st.button("Reset filters"):
         for key in ("explorer_person", "explorer_device",
                     "explorer_account", "explorer_keyword"):
             st.session_state.pop(key, None)
         st.rerun()
+    results = _filter_records(index)
+    st.caption(f"{len(results)} record(s)")
+    if results:
+        _render_results(results)
+    else:
+        st.info("No records match these filters.")
+    _render_help()
 
+def _filter_records(index: CaseIndex) -> list[Evidence]:
+    """Apply the entity, date, and keyword filters."""
     scope = st.selectbox("Filter by", ["All", "Person", "Device", "Account"])
     results = list(index.records)
     if scope == "Person":
@@ -267,8 +269,10 @@ def page_explorer() -> None:
             results = index.for_account(value)
 
     columns = st.columns(2)
-    start_date = columns[0].date_input("Start date", value=first)
-    end_date = columns[1].date_input("End date", value=last)
+    start_date = columns[0].date_input("Start date",
+                                       value=index.records[0].timestamp.date())
+    end_date = columns[1].date_input("End date",
+                                     value=index.records[-1].timestamp.date())
     start = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
     end = datetime.combine(end_date, time.max, tzinfo=timezone.utc)
     results = [row for row in results if start <= row.timestamp <= end]
@@ -277,19 +281,17 @@ def page_explorer() -> None:
     if keyword.strip():
         allowed = {row.id for row in index.keyword(keyword)}
         results = [row for row in results if row.id in allowed]
+    return results
 
-    st.caption(f"{len(results)} record(s)")
-    if results:
-        st.dataframe(pd.DataFrame([row.to_dict() for row in results]),
-                     width="stretch", hide_index=True)
-        days = pd.DataFrame(
-            {"day": [row.timestamp.date().isoformat() for row in results]}
-        )
-        counts = days.groupby("day").size().reset_index(name="records")
-        st.bar_chart(counts, x="day", y="records")
-    else:
-        st.info("No records match these filters.")
-    _render_help()
+def _render_results(results: list[Evidence]) -> None:
+    """Show the matching records and a records-per-day chart."""
+    st.dataframe(pd.DataFrame([row.to_dict() for row in results]),
+                 width="stretch", hide_index=True)
+    days = pd.DataFrame(
+        {"day": [row.timestamp.date().isoformat() for row in results]}
+    )
+    counts = days.groupby("day").size().reset_index(name="records")
+    st.bar_chart(counts, x="day", y="records")
 
 
 if __name__ == "__main__":

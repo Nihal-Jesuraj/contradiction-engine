@@ -72,21 +72,39 @@ def _check_hop(
     if not graph.has_node(first.place) or not graph.has_node(second.place):
         return None
 
-    if first.place not in cache:
-        cache[first.place] = graph.dijkstra(first.place)
-    distances, previous = cache[first.place]
+    distances, previous = _distances(graph, cache, first.place)
     required = distances.get(second.place)
     if required is None:
         return None
 
-    elapsed = (
-        second.timestamp - first.timestamp
-    ).total_seconds() / 60.0
+    elapsed = (second.timestamp - first.timestamp).total_seconds() / 60.0
     if elapsed >= required:
         # Equal time is feasible, and tiny shortfalls are still reported:
         # nothing here discards small deltas.
         return None
+    return _build_conflict(first, second, elapsed, required, graph, previous)
 
+
+def _distances(
+    graph: WeightedGraph,
+    cache: dict[str, tuple[dict[str, float], dict[str, str]]],
+    place: str,
+) -> tuple[dict[str, float], dict[str, str]]:
+    """Return cached Dijkstra results for a source place."""
+    if place not in cache:
+        cache[place] = graph.dijkstra(place)
+    return cache[place]
+
+
+def _build_conflict(
+    first: Evidence,
+    second: Evidence,
+    elapsed: float,
+    required: float,
+    graph: WeightedGraph,
+    previous: dict[str, str],
+) -> Conflict:
+    """Build the conflict object for one impossible hop."""
     shortfall = required - elapsed
     path = graph.shortest_path(previous, first.place, second.place)
     return Conflict(

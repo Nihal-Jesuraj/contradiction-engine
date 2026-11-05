@@ -187,15 +187,23 @@ def _parse_places(
     document = json.loads(data.decode("utf-8-sig"))
     if not isinstance(document, dict):
         raise ValueError("expected a JSON object")
-    raw_places = document.get("places")
-    raw_edges = document.get("edges")
+    places = _parse_place_table(document.get("places"))
+    roads = _parse_roads(document.get("edges"))
+    try:
+        graph = build_place_graph(places, roads)
+    except ValueError as exc:
+        raise ValueError(str(exc)) from exc
+    if not is_connected(graph):
+        raise ValueError("the road network is not connected")
+    return places, roads
+
+
+def _parse_place_table(raw_places: object) -> dict[str, tuple[float, float]]:
+    """Validate the place-name to coordinate table."""
     if not isinstance(raw_places, dict) or not raw_places:
         raise ValueError("'places' must be a non-empty object")
-    if not isinstance(raw_edges, list):
-        raise ValueError("'edges' must be a list")
     if len(raw_places) < 2:
         raise ValueError("at least two places are required")
-
     places: dict[str, tuple[float, float]] = {}
     for name, coordinates in raw_places.items():
         if not isinstance(coordinates, (list, tuple)) or len(coordinates) != 2:
@@ -210,7 +218,13 @@ def _parse_places(
         if not -90.0 <= latitude <= 90.0 or not -180.0 <= longitude <= 180.0:
             raise ValueError(f"place {name!r} is outside valid coordinates")
         places[str(name)] = (latitude, longitude)
+    return places
 
+
+def _parse_roads(raw_edges: object) -> list[tuple[str, str, float | None]]:
+    """Validate the road list and optional per-edge minutes."""
+    if not isinstance(raw_edges, list):
+        raise ValueError("'edges' must be a list")
     roads: list[tuple[str, str, float | None]] = []
     for index, edge in enumerate(raw_edges, start=1):
         if not isinstance(edge, (list, tuple)) or len(edge) not in (2, 3):
@@ -225,14 +239,7 @@ def _parse_places(
             if not math.isfinite(minutes) or minutes < 0:
                 raise ValueError(f"edge {index} needs finite non-negative minutes")
         roads.append((first, second, minutes))
-
-    try:
-        graph = build_place_graph(places, roads)
-    except ValueError as exc:
-        raise ValueError(str(exc)) from exc
-    if not is_connected(graph):
-        raise ValueError("the road network is not connected")
-    return places, roads
+    return roads
 
 
 def _filename_stem(filename: str) -> str:
@@ -306,35 +313,15 @@ def _build_record(
     record_type = values["record_type"]
     if record_type not in RECORD_TYPES:
         raise ValueError(f"unknown record_type {record_type!r}")
-
-    missing = [
-        field for field in REQUIRED_FIELDS[record_type] if not values[field]
-    ]
-    if missing:
-        raise ValueError("missing required field(s): " + ", ".join(missing))
+    _validate_row(record_type, values, places)
 
     timestamp = parse_timestamp(values["timestamp"])
     record_id = values["id"] or _generate_id(values, row_number)
     if record_id in seen_ids:
         raise ValueError(f"duplicate id {record_id!r}")
-
-    if record_type == "state" and values["state"] not in DEVICE_STATES:
-        raise ValueError(
-            f"state must be one of {', '.join(DEVICE_STATES)}"
-        )
-    if record_type == "sighting" and values["place"] not in places:
-        raise ValueError(f"unknown place {values['place']!r}")
-
-    end_timestamp: datetime | None = None
-    if record_type == "claim":
-        if values["claim"] not in CLAIM_TYPES:
-            raise ValueError(
-                f"claim must be one of {', '.join(CLAIM_TYPES)}"
-            )
-        end_timestamp = parse_timestamp(values["end_timestamp"], "end_timestamp")
-        if end_timestamp <= timestamp:
-            raise ValueError("end_timestamp must be after timestamp")
-
+    end_timestamp = (
+        _claim_end(values, timestamp) if record_type == "claim" else None
+    )
     return Evidence(
         id=record_id,
         timestamp=timestamp,
@@ -350,6 +337,33 @@ def _build_record(
         end_timestamp=end_timestamp,
         text=values["text"],
     )
+
+
+def _validate_row(
+    record_type: str,
+    values: dict[str, str],
+    places: dict[str, tuple[float, float]],
+) -> None:
+    """Check required fields and type-specific domains."""
+    missing = [
+        field for field in REQUIRED_FIELDS[record_type] if not values[field]
+    ]
+    if missing:
+        raise ValueError("missing required field(s): " + ", ".join(missing))
+    if record_type == "state" and values["state"] not in DEVICE_STATES:
+        raise ValueError(f"state must be one of {', '.join(DEVICE_STATES)}")
+    if record_type == "sighting" and values["place"] not in places:
+        raise ValueError(f"unknown place {values['place']!r}")
+    if record_type == "claim" and values["claim"] not in CLAIM_TYPES:
+        raise ValueError(f"claim must be one of {', '.join(CLAIM_TYPES)}")
+
+
+def _claim_end(values: dict[str, str], start: datetime) -> datetime:
+    """Parse and validate a claim's end timestamp."""
+    end = parse_timestamp(values["end_timestamp"], "end_timestamp")
+    if end <= start:
+        raise ValueError("end_timestamp must be after timestamp")
+    return end
 
 
 def _check_dependencies(
