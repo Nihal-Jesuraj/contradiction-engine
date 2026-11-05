@@ -7,6 +7,7 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
+from contradiction_engine.algorithms.graph import WeightedGraph
 from contradiction_engine.models import Case, CaseIndex, Conflict, Evidence
 
 PAGES: tuple[str, ...] = (
@@ -101,6 +102,15 @@ def ensure_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+
+def case_graph(case: Case) -> WeightedGraph:
+    """Return the case's road graph, building it once per case object."""
+    cached = st.session_state.get("graph_cache")
+    if cached is None or cached[0] is not case:
+        cached = (case, case.graph())
+        st.session_state.graph_cache = cached
+    return cached[1]
 
 
 def store_case(case: Case, source: str) -> None:

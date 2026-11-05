@@ -13,6 +13,7 @@ from contradiction_engine.models import Case, Conflict, score_conflicts
 
 from .status_tiles import render_status_tiles
 from .widgets import (
+    case_graph,
     KIND_LABELS,
     RECORD_TYPE_LABELS,
     highest_severity,
@@ -24,6 +25,7 @@ from .widgets import (
 )
 
 ROUTE_KINDS = ("location", "claim_location")
+PAGE_SIZE = 15
 
 
 def render_analyze_page() -> None:
@@ -44,10 +46,17 @@ def render_analyze_page() -> None:
     _render_results()
 
 
+def _reset_pages() -> None:
+    """Forget how many conflict cards each tab had expanded."""
+    for key in [key for key in st.session_state if str(key).startswith("shown_")]:
+        del st.session_state[key]
+
+
 def _run_analysis(case: Case) -> None:
     """Run all detectors, timing only the detector call."""
+    _reset_pages()
     with st.status("Running detectors", expanded=False) as status:
-        graph = case.graph()
+        graph = case_graph(case)
         started = time.perf_counter()
         conflicts = run_all_detectors(case.records, graph)
         runtime_ms = (time.perf_counter() - started) * 1000.0
@@ -116,8 +125,24 @@ def _render_conflicts(case: Case, conflicts: list[Conflict]) -> None:
                     for kind, items in groups])
     for tab, (kind, items) in zip(tabs, groups):
         with tab:
-            for conflict in items:
-                _render_conflict(case, conflict)
+            _render_tab(case, kind, items)
+
+
+def _show_more(key: str) -> None:
+    """Callback: reveal another page of conflict cards."""
+    st.session_state[key] = st.session_state.get(key, PAGE_SIZE) + PAGE_SIZE
+
+
+def _render_tab(case: Case, kind: str, items: list[Conflict]) -> None:
+    """Render the first cards of one tab, with a Show more button."""
+    key = f"shown_{kind}"
+    shown = st.session_state.get(key, PAGE_SIZE)
+    for conflict in items[:shown]:
+        _render_conflict(case, conflict)
+    if len(items) > shown:
+        st.caption(f"Showing {shown} of {len(items)}")
+        st.button("Show more", key=f"more_{kind}", on_click=_show_more,
+                  args=(key,))
 
 
 def _group_conflicts(
@@ -182,7 +207,7 @@ def _render_route(case: Case, conflict: Conflict) -> None:
         st.caption(f"{' -> '.join(path)} · {required} minutes required")
     else:
         st.caption(" -> ".join(path))
-    st.graphviz_chart(case.graph().to_dot(path), width="stretch")
+    st.graphviz_chart(case_graph(case).to_dot(path), width="stretch")
 
 
 def _shortest_path(case: Case, conflict: Conflict) -> list[str]:
@@ -195,10 +220,10 @@ def _shortest_path(case: Case, conflict: Conflict) -> list[str]:
     target = conflict.numbers.get("to_place") or conflict.numbers.get("seen_place")
     if not isinstance(start, str) or not isinstance(target, str):
         return []
-    distances, previous = case.graph().dijkstra(start)
+    distances, previous = case_graph(case).dijkstra(start)
     if target not in distances:
         return []
-    return case.graph().shortest_path(previous, start, target)
+    return case_graph(case).shortest_path(previous, start, target)
 
 
 def _render_device_timeline(conflict: Conflict) -> None:

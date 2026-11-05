@@ -7,7 +7,7 @@ import streamlit as st
 
 from contradiction_engine.models import Case, CaseIndex, Evidence
 
-from .widgets import RECORD_TYPE_LABELS, page_header, records_frame
+from .widgets import case_graph, RECORD_TYPE_LABELS, page_header, records_frame
 
 FILTER_KEYS = (
     "explorer_person",
@@ -128,7 +128,7 @@ def _render_graph_views(case: Case, index: CaseIndex) -> None:
 
 def _render_place_map(case: Case) -> None:
     """Draw the sparse road map and highlight one shortest route."""
-    graph = case.graph()
+    graph = case_graph(case)
     places = graph.nodes()
     columns = st.columns(2)
     source = columns[0].selectbox("From place", places, key="map_from")

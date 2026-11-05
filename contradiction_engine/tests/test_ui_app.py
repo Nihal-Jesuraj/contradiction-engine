@@ -87,3 +87,16 @@ def test_status_tiles_appear_after_analyze() -> None:
     next(button for button in app.button if button.label == "ANALYZE").click().run()
     assert "Status" in [caption.value for caption in app.caption]
     assert not app.exception
+
+
+def test_road_graph_is_built_once_per_case() -> None:
+    """Pages reuse one cached road graph instead of rebuilding it."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Analyze & Conflicts")
+    next(button for button in app.button if button.label == "ANALYZE").click().run()
+    first = app.session_state["graph_cache"][1]
+    app = _go(app, "Evidence Explorer")
+    assert app.session_state["graph_cache"][1] is first
+    assert not app.exception

@@ -1,8 +1,8 @@
 # Changelog
 
-All checkpoints from the ChronoClash refactor are recorded here.
+All checkpoints from the Contradiction Engine rebuild are recorded here.
 
-## Unreleased
+## 0.3.0 — 2026-11-06
 
 ### Changed (UI only)
 
@@ -16,6 +16,8 @@ All checkpoints from the ChronoClash refactor are recorded here.
 
 ### Added (UI only)
 
+- The road graph is built once per case and reused across pages; each
+  conflict tab shows 15 cards at a time with a "Show more" button.
 - Evidence Explorer tabs (Records / Relationships / Diagnostics), combined
   person, device, account, date-range and keyword filters, a records-per-hour
   (or per-type) chart that hides when there is nothing to compare.
@@ -99,6 +101,6 @@ All checkpoints from the ChronoClash refactor are recorded here.
 
 ### Removed
 
-- The old ChronoClash `core/`, `backend/`, `hud/`, old `tests/`, `docs/`,
+- The legacy `core/`, `backend/`, `hud/`, old `tests/`, `docs/`,
   `.streamlit/`, and root README were deleted in a separate commit after the
   new suite passed. The previous state is preserved by the `chronoclash-v1` tag.

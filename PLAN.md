@@ -1,4 +1,4 @@
-# PLAN.md — ChronoClash → Contradiction Engine
+# PLAN.md — Contradiction Engine
 
 ## 1. Goal
 
@@ -59,7 +59,7 @@ Root `requirements.txt`: `streamlit`, `pandas`, `pytest` only.
 Root `pyproject.toml`: drop FastAPI/Pydantic/Plotly/requests; pytest points at
 `contradiction_engine/tests`.
 
-## 3. Reuse from ChronoClash
+## 3. Reuse from the legacy code
 
 | Old | New use |
 | --- | --- |
