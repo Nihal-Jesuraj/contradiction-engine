@@ -27,8 +27,7 @@ streamlit run app.py
 
 Open <http://127.0.0.1:8501>. There is no backend service and no Node.js step.
 
-**Theme:** open the menu at the top right, choose Settings, and pick Light, Dark
-or "Use system setting".
+**Theme:** use the small "Light theme" toggle in the sidebar (dark is the default).
 
 ### Two-minute demo
 

@@ -36,15 +36,15 @@ def test_formula_cells_are_neutralised_on_export() -> None:
     assert neutralize_cell("@cmd") == "'@cmd"
 
 
-def test_light_and_dark_palettes_differ() -> None:
-    """The stylesheet follows the active theme and defaults to dark."""
-    assert "--hud-bg: #0E1117" in build_css("dark")
-    assert "--hud-bg: #F6F8FA" in build_css("light")
-    assert build_css(None) == build_css("dark")
+def test_light_mode_adds_only_the_fixed_filter() -> None:
+    """Light mode appends one fixed filter rule; dark mode has none."""
+    assert "invert(" not in build_css(False)
+    assert "invert(0.92) hue-rotate(180deg)" in build_css(True)
+    assert "--hud-bg: #0E1117" in build_css(True)
 
 
-def test_config_keeps_theme_switch_available() -> None:
-    """viewer mode keeps Settings; light and dark themes are both defined."""
+def test_config_hides_menu_and_keeps_dark_base() -> None:
+    """The toolbar menu is hidden and the native theme is the dark one."""
     config = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text())
-    assert config["client"]["toolbarMode"] == "viewer"
-    assert {"light", "dark"} <= set(config["theme"])
+    assert config["client"]["toolbarMode"] == "minimal"
+    assert config["theme"]["base"] == "dark"

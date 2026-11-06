@@ -153,28 +153,18 @@ PALETTES = {
   --hud-sidebar-tint: rgba(14, 17, 23, 0.55);
   --hud-card: rgba(22, 27, 38, 0.55); --hud-card-soft: rgba(22, 27, 38, 0.45);
 }""",
-    "light": """:root {
-  --hud-bg: #F6F8FA; --hud-panel: #FFFFFF; --hud-text: #1F2937;
-  --hud-muted: #5B6778; --hud-line: rgba(31, 41, 55, 0.16);
-  --hud-accent: #0D9488; --hud-accent-hover: #14B8A6; --hud-on-accent: #FFFFFF;
-  --hud-sidebar-tint: rgba(255, 255, 255, 0.7);
-  --hud-card: rgba(255, 255, 255, 0.85); --hud-card-soft: rgba(255, 255, 255, 0.7);
-}""",
 }
 
 
-def build_css(theme_type: str | None) -> str:
-    """Return the fixed stylesheet with the palette for the active theme."""
-    palette = PALETTES.get(theme_type or "dark", PALETTES["dark"])
-    return THEME_CSS.replace("<style>", "<style>\n" + palette, 1)
+LIGHT_FILTER = "html { filter: invert(0.92) hue-rotate(180deg); }"
 
 
-def _theme_type() -> str:
-    """Return Streamlit's active theme type, defaulting to dark."""
-    try:
-        return st.context.theme.type or "dark"
-    except Exception:  # noqa: BLE001 - theme info is optional
-        return "dark"
+def build_css(light: bool = False) -> str:
+    """Return the fixed stylesheet; light mode inverts the whole dark UI."""
+    css = THEME_CSS.replace("<style>", "<style>\n" + PALETTES["dark"], 1)
+    if light:
+        css = css.replace("</style>", LIGHT_FILTER + "\n</style>", 1)
+    return css
 
 
 def configure_page() -> None:
@@ -185,4 +175,4 @@ def configure_page() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    st.markdown(build_css(_theme_type()), unsafe_allow_html=True)
+    st.markdown(build_css(bool(st.session_state.get("light_mode", False))), unsafe_allow_html=True)

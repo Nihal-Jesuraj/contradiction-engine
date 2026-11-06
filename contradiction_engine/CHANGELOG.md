@@ -31,8 +31,9 @@ All checkpoints from the Contradiction Engine rebuild are recorded here.
   other rejected file.
 - Downloaded case.csv neutralises cells that start with `=`, `+`, `-`, `@`,
   tab or CR (a leading quote is added) so a spreadsheet cannot run them.
-- Theme switching is back: `toolbarMode = "viewer"` keeps the Settings menu,
-  and `config.toml` defines separate light and dark themes.
+- The toolbar menu (Settings, Deploy) is hidden; theme switching is one small
+  "Light theme" toggle in the sidebar. Light mode inverts the dark theme with a
+  fixed CSS filter, so every widget stays consistent and the loaded case is kept.
 - Added a privacy note on upload, a near-limit file note, and a large-case
   warning above 5,000 records.
 
