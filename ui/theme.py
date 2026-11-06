@@ -156,15 +156,9 @@ PALETTES = {
 }
 
 
-LIGHT_FILTER = "html { filter: invert(0.92) hue-rotate(180deg); }"
-
-
-def build_css(light: bool = False) -> str:
-    """Return the fixed stylesheet; light mode inverts the whole dark UI."""
-    css = THEME_CSS.replace("<style>", "<style>\n" + PALETTES["dark"], 1)
-    if light:
-        css = css.replace("</style>", LIGHT_FILTER + "\n</style>", 1)
-    return css
+def build_css() -> str:
+    """Return the fixed stylesheet with the dark palette inserted."""
+    return THEME_CSS.replace("<style>", "<style>\n" + PALETTES["dark"], 1)
 
 
 def configure_page() -> None:
@@ -175,4 +169,4 @@ def configure_page() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    st.markdown(build_css(bool(st.session_state.get("light_mode", False))), unsafe_allow_html=True)
+    st.markdown(build_css(), unsafe_allow_html=True)

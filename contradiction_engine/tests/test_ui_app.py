@@ -101,12 +101,3 @@ def test_road_graph_is_built_once_per_case() -> None:
     assert app.session_state["graph_cache"][1] is first
     assert not app.exception
 
-
-def test_light_theme_toggle_injects_filter_without_error() -> None:
-    """The sidebar toggle switches the stylesheet and keeps the app healthy."""
-    app = _app()
-    assert not any("invert(" in item.value for item in app.markdown)
-    toggle = next(item for item in app.toggle if item.label == "Light theme")
-    toggle.set_value(True).run()
-    assert any("invert(" in item.value for item in app.markdown)
-    assert not app.exception

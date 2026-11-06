@@ -128,7 +128,6 @@ def render_sidebar() -> str:
     """Render navigation, the current-case card, and the responsibility note."""
     with st.sidebar:
         page = st.radio("Page", PAGES)
-        st.toggle("Light theme", key="light_mode")
         st.divider()
         st.caption("Current case")
         with st.container(border=True):

@@ -36,11 +36,11 @@ def test_formula_cells_are_neutralised_on_export() -> None:
     assert neutralize_cell("@cmd") == "'@cmd"
 
 
-def test_light_mode_adds_only_the_fixed_filter() -> None:
-    """Light mode appends one fixed filter rule; dark mode has none."""
-    assert "invert(" not in build_css(False)
-    assert "invert(0.92) hue-rotate(180deg)" in build_css(True)
-    assert "--hud-bg: #0E1117" in build_css(True)
+def test_stylesheet_is_fixed_and_dark() -> None:
+    """The stylesheet carries the dark palette and no data-driven parts."""
+    css = build_css()
+    assert "--hud-bg: #0E1117" in css
+    assert "invert(" not in css
 
 
 def test_config_hides_menu_and_keeps_dark_base() -> None:

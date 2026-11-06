@@ -27,8 +27,6 @@ streamlit run app.py
 
 Open <http://127.0.0.1:8501>. There is no backend service and no Node.js step.
 
-**Theme:** use the small "Light theme" toggle in the sidebar (dark is the default).
-
 ### Two-minute demo
 
 1. Generate / Upload: press **Load demo case**.
