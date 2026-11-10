@@ -7,8 +7,10 @@ from datetime import datetime, time, timezone
 import pandas as pd
 import streamlit as st
 
+from contradiction_engine.algorithms.graph import WeightedGraph
 from contradiction_engine.models import Case, CaseIndex, Evidence
 
+from .dot_theme import style_entity_dot, style_road_dot
 from .widgets import case_graph, RECORD_TYPE_LABELS, page_header, records_frame
 
 FILTER_KEYS = (
@@ -19,20 +21,33 @@ FILTER_KEYS = (
     "explorer_dates",
 )
 
+RESIZE_THRESHOLD = 0.75
+
+# Fixed markup: no case data is ever interpolated into it.
+RING_LEGEND_HTML = (
+    '<div class="hud-legend" aria-label="Ring colour shows hops from the start">'
+    '<span><i class="hud-ring hud-ring-0"></i>Start</span>'
+    '<span><i class="hud-ring hud-ring-1"></i>1 hop</span>'
+    '<span><i class="hud-ring hud-ring-2"></i>2 hops</span>'
+    '<span><i class="hud-ring hud-ring-3"></i>3 hops</span>'
+    '<span><i class="hud-ring hud-ring-far"></i>Outside the hop limit</span>'
+    "</div>"
+)
+
 
 def render_explorer_page() -> None:
-    """Show the records, relationship, and diagnostics tabs."""
+    """Show the records, relationships, and hash index health tabs."""
     case = st.session_state.case
     index = st.session_state.index
     page_header(
         "Evidence explorer",
-        "Filter records, inspect relationships, and read the index diagnostics.",
+        "Filter records, inspect relationships, and check the hash index health.",
     )
     if case is None or not index.records:
         st.info("Generate or upload a case on the first page.")
         return
     records_tab, relations_tab, diagnostics_tab = st.tabs(
-        ["Records", "Relationships", "Diagnostics"]
+        ["Records", "Relationships", "Hash index health"]
     )
     with records_tab:
         _render_records_tab(index)
@@ -124,7 +139,22 @@ def _render_volume_chart(results: list[Evidence]) -> None:
 
 def _render_graph_views(case: Case, index: CaseIndex) -> None:
     """Show the road map and the entity-relationship graph."""
-    map_tab, entity_tab = st.tabs(["Place map", "Entity graph"])
+    with st.expander("How these views work"):
+        st.markdown(
+            "**Road network · Dijkstra** — nodes are places and edges are roads. "
+            "Edge labels are travel time in **minutes**. Dijkstra finds the "
+            "fastest route, which may pass through other places.\n\n"
+            "**Entity links · BFS** — nodes are people, devices, accounts and "
+            "places. An edge means the two entities appear in the same record "
+            "(or one message depends on another). Shape shows the entity kind; "
+            "the coloured ring shows the number of BFS hops from the start.\n\n"
+            "**Hash index health** — each index is a hash table. *Load factor* "
+            "is keys ÷ buckets; the table resizes above 0.75. *Longest chain* "
+            "is the most keys sharing one bucket; above 1 is normal."
+        )
+    map_tab, entity_tab = st.tabs(
+        ["Road network · Dijkstra", "Entity links · BFS"]
+    )
     with map_tab:
         _render_place_map(case)
     with entity_tab:
@@ -135,19 +165,52 @@ def _render_place_map(case: Case) -> None:
     """Draw the sparse road map and highlight one shortest route."""
     graph = case_graph(case)
     places = graph.nodes()
-    columns = st.columns(2)
+    columns = st.columns([1, 1, 0.42], vertical_alignment="bottom")
     source = columns[0].selectbox("From place", places, key="map_from")
     target = columns[1].selectbox(
         "To place", places, index=min(1, len(places) - 1), key="map_to"
     )
+    columns[2].button("Swap", key="map_swap", on_click=_swap_map)
     distances, previous = graph.dijkstra(source)
     required = distances.get(target)
     path = graph.shortest_path(previous, source, target)
     if required is None:
         st.warning("No route connects those places.")
     else:
-        st.caption(f"Shortest route: {' -> '.join(path)} · {required:.0f} minutes")
-    st.graphviz_chart(graph.to_dot(path), width="stretch")
+        st.caption(f"Fastest route · {' → '.join(path)} · {required:.0f} min")
+        _render_direct_comparison(graph, source, target, path, required)
+    st.caption(
+        "Place = node · road = edge · label = travel minutes · "
+        "sky blue = fastest route."
+    )
+    st.graphviz_chart(
+        style_road_dot(graph.to_dot(path), path), width="stretch"
+    )
+
+
+def _swap_map() -> None:
+    """Callback: exchange the From and To place selections."""
+    st.session_state.map_from, st.session_state.map_to = (
+        st.session_state.map_to, st.session_state.map_from
+    )
+
+
+def _render_direct_comparison(
+    graph: WeightedGraph,
+    source: str,
+    target: str,
+    path: list[str],
+    required: float,
+) -> None:
+    """Note when a multi-stop route beats the direct road."""
+    direct = graph.edge_weight(source, target)
+    if direct is None or len(path) <= 2 or direct <= required:
+        return
+    stops = len(path) - 2
+    st.caption(
+        f"Direct road: {direct:.0f} min · {stops} stop(s) save "
+        f"{direct - required:.0f} min."
+    )
 
 
 def _render_entity_graph(index: CaseIndex) -> None:
@@ -166,7 +229,15 @@ def _render_entity_graph(index: CaseIndex) -> None:
                       key="entity_depth")
     related = graph.related(start, depth)
     st.caption(f"{len(related)} entities within {depth} hop(s) of {start}.")
-    st.graphviz_chart(graph.to_dot({start: 0, **related}), width="stretch")
+    st.caption(
+        "Shape shows the kind: ellipse = person · box = device · "
+        "diamond = account · house = place."
+    )
+    st.markdown(RING_LEGEND_HTML, unsafe_allow_html=True)
+    st.graphviz_chart(
+        style_entity_dot(graph.to_dot({start: 0, **related}), start),
+        width="stretch",
+    )
     if related:
         rows = [{"entity": node, "hops": hops} for node, hops in related.items()]
         st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
@@ -174,11 +245,56 @@ def _render_entity_graph(index: CaseIndex) -> None:
 
 def _render_index_diagnostics(index: CaseIndex) -> None:
     """Show load factor and longest chain for each hash index."""
-    columns = st.columns(3)
     tables = (("Person", index.person_index), ("Device", index.device_index),
               ("Account", index.account_index))
+    rows = [
+        {
+            "Index": label,
+            "Keys": len(table),
+            "Buckets": table.capacity,
+            "Load factor": round(table.load_factor, 2),
+            "Longest chain": table.longest_chain(),
+        }
+        for label, table in tables
+    ]
+    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+    columns = st.columns(3)
     for column, (label, table) in zip(columns, tables):
-        with column, st.container(border=True):
-            st.metric(label, f"{len(table)} keys")
-            st.caption(f"load factor {table.load_factor:.2f} · "
-                       f"longest chain {table.longest_chain()}")
+        with column:
+            st.markdown(
+                load_meter_html(label, len(table), table.capacity,
+                                table.load_factor),
+                unsafe_allow_html=True,
+            )
+    st.caption(
+        f"Load factor = keys ÷ buckets. The vertical tick marks the "
+        f"{RESIZE_THRESHOLD:.2f} resize threshold. A longest chain above 1 is "
+        "normal with separate chaining; this panel reports hash-table "
+        "density, not evidence quality."
+    )
+    st.caption(
+        "Hash function: FNV-1a 64-bit · average O(1) lookup · "
+        "worst O(n) when every key collides."
+    )
+
+
+def load_meter_html(label: str, keys: int, buckets: int, load: float) -> str:
+    """Return a load-factor meter with a tick at the resize threshold.
+
+    Inputs: a fixed index label and three numbers from a hash table.
+    Outputs: one line of HTML; only numbers and the fixed label appear in it.
+    Complexity: O(1).
+    """
+    fill = max(0.0, min(load, 1.0)) * 100
+    tick = RESIZE_THRESHOLD * 100
+    return (
+        f'<div class="hud-meter" role="meter" aria-label="{label} load factor"'
+        f' aria-valuemin="0" aria-valuemax="1" aria-valuenow="{load:.2f}">'
+        f'<div class="hud-meter-label"><span>{label}</span>'
+        f"<span>load {load:.2f} · {keys} keys / {buckets} buckets</span></div>"
+        f'<div class="hud-meter-track">'
+        f'<div class="hud-meter-fill" style="width:{fill:.1f}%"></div>'
+        f'<div class="hud-meter-mark" style="left:{tick:.0f}%"'
+        f' title="Resize threshold {RESIZE_THRESHOLD:.2f}"></div>'
+        "</div></div>"
+    )

@@ -2,6 +2,34 @@
 
 All checkpoints from the Contradiction Engine rebuild are recorded here.
 
+## Unreleased — Refined HUD
+
+### Changed (UI only; no algorithm or detector logic touched)
+
+- **Refined HUD palette.** One sky-blue accent (`#38BDF8`), rose/amber/slate
+  severity colours, and a separate emerald for CLEAR. The fastest-route
+  highlight uses the accent, so a route no longer looks like a HIGH warning.
+- **One source of truth for colour.** `ui/theme.py` `PALETTE` now feeds the CSS,
+  the STATUS tile tints, and the Graphviz styling in `ui/dot_theme.py`.
+  `.streamlit/config.toml` carries matching native badge and code colours, and
+  a test fails if the two drift apart.
+- **Graphviz matches the dark app.** `ui/dot_theme.py` restyles the structure-only
+  DOT from `WeightedGraph.to_dot` / `EvidenceGraph.to_dot`: transparent canvas,
+  dark nodes, sans-serif labels, edge labels read `6 min`, and the route is
+  drawn in the accent. Entity nodes keep a dark fill with a hop-coloured ring;
+  a legend explains the ring colours and the shape of each entity kind.
+- **Relationships and diagnostics.** Tabs are now *Road network · Dijkstra*,
+  *Entity links · BFS* and *Hash index health*. Added a "How these views work"
+  expander, a Swap button, a direct-road vs fastest-route note, and `→` in route
+  captions (including the Numbers table).
+- **Hash index health** is one comparison table (Keys, Buckets, Load factor,
+  Longest chain) plus a load meter per index with a tick at the 0.75 resize
+  threshold, and notes on FNV-1a and O(1) average / O(n) worst lookups.
+- **Polish.** STATUS legend, tinted tiles with a left accent bar, bordered KPI
+  cards, sentence-case metric labels, monospace record IDs, a visible focus ring
+  on every interactive element, a height cap on graphs, and the Generate sliders
+  split into two rows.
+
 ## 0.3.1 — 2026-11-10
 
 ### Fixed (UI and packaging)

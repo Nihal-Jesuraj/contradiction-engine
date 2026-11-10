@@ -73,12 +73,14 @@ def _generate_form() -> None:
     with st.form("generate"):
         seed = st.number_input("Seed", min_value=1, max_value=999999, value=42)
         people = st.slider("People", min_value=1, max_value=8, value=4)
-        columns = st.columns(5)
-        device = columns[0].slider("Device was off", 0, 5, 2)
-        travel = columns[1].slider("Impossible-travel conflicts", 0, 5, 2)
-        message = columns[2].slider("Message conflicts", 0, 5, 2)
-        claim = columns[3].slider("Denied-access conflicts", 0, 5, 2)
-        place = columns[4].slider("Claimed-place conflicts", 0, 5, 1)
+        st.caption("Planted conflicts")
+        first = st.columns(3)
+        device = first[0].slider("Device was off", 0, 5, 2)
+        travel = first[1].slider("Impossible-travel conflicts", 0, 5, 2)
+        message = first[2].slider("Message conflicts", 0, 5, 2)
+        second = st.columns(2)
+        claim = second[0].slider("Denied-access conflicts", 0, 5, 2)
+        place = second[1].slider("Claimed-place conflicts", 0, 5, 1)
         if st.form_submit_button("Generate case", type="primary"):
             _load_generated(
                 GeneratorConfig(

@@ -61,8 +61,12 @@ Run the tests from the repository root:
    by time range (binary search through `CaseIndex.in_range`), and by keyword
    (prefix trie). The Records tab shows a slim table and a records-per-hour
    chart (or per record type when only one hour is present). The Relationships
-   tab renders the road map and the entity graph as Graphviz diagrams, and the
-   Diagnostics tab shows each index's load factor and longest chain.
+   tab has two views: *Road network · Dijkstra* (places, roads, travel minutes,
+   fastest route) and *Entity links · BFS* (who or what appears with whom, by
+   hop distance). The *Hash index health* tab compares the person, device and
+   account indexes: keys, buckets, load factor against the 0.75 resize
+   threshold, and longest chain. It describes hash-table density, not evidence
+   quality.
 
 The Analyze page includes a **How the detectors work** expander listing each
 detector's algorithm and complexity.
@@ -223,7 +227,8 @@ in the place table.
 ```text
 app.py                          Streamlit page router
 ui/
-  theme.py                      fixed dark HUD stylesheet
+  theme.py                      fixed dark HUD stylesheet and shared PALETTE
+  dot_theme.py                  presentation-only Graphviz styling (uses PALETTE)
   widgets.py                    labels, session state, sidebar, shared tables
   generate_page.py              Generate / Upload page
   analyze_page.py               Analyze & Conflicts page
@@ -360,11 +365,12 @@ when they co-occur in a record, is enough. Breadth-first search with a FIFO
 `deque` visits each node and edge once, so `related(start, k)` is O(V + E).
 
 **How are the Graphviz diagrams drawn?**
-`WeightedGraph.to_dot` and `EvidenceGraph.to_dot` return plain DOT strings.
-`st.graphviz_chart` renders DOT in the browser, so the Python `graphviz` package
-is not needed. The road map labels every edge with its minutes and colours the
-chosen shortest route; the entity graph uses a shape per entity kind and colours
-nodes by hop distance from the selected start.
+`WeightedGraph.to_dot` and `EvidenceGraph.to_dot` return plain, structure-only
+DOT strings; `ui/dot_theme.py` then adds the dark HUD colours, fonts and
+`N min` edge labels. `st.graphviz_chart` renders DOT in the browser, so the
+Python `graphviz` package is not needed. The road map highlights the chosen
+shortest route in the accent colour; the entity graph uses a shape per entity
+kind and a coloured ring for hop distance from the selected start.
 
 **Why is ground truth never passed to a detector?**
 Otherwise the detector could simply read the answer. The generator returns

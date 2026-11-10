@@ -11,7 +11,8 @@ import streamlit as st
 from contradiction_engine.detectors import run_all_detectors
 from contradiction_engine.models import Case, Conflict, score_conflicts
 
-from .status_tiles import render_status_tiles
+from .dot_theme import style_road_dot
+from .status_tiles import render_status_legend, render_status_tiles
 from .widgets import (
     case_graph,
     KIND_LABELS,
@@ -79,6 +80,7 @@ def _render_results() -> None:
     _render_kpis(len(case.records), conflicts)
     _render_score()
     render_status_tiles(case, conflicts)
+    render_status_legend()
     if conflicts:
         _render_conflicts(case, conflicts)
     else:
@@ -194,7 +196,7 @@ def _render_records(case: Case, conflict: Conflict) -> None:
     for index, record in enumerate(records):
         with columns[index % len(columns)]:
             label = RECORD_TYPE_LABELS.get(record.record_type, record.record_type)
-            st.caption(f"{record.id} · {label}")
+            st.caption(f"`{record.id}` · {label}")
             st.dataframe(record_frame(record), hide_index=True, width="stretch")
 
 
@@ -203,13 +205,15 @@ def _render_route(case: Case, conflict: Conflict) -> None:
     path = _shortest_path(case, conflict)
     if not path:
         return
-    st.markdown("**Shortest road route**")
+    st.markdown("**Fastest road route**")
     required = conflict.numbers.get("required_minutes")
     if required is not None:
-        st.caption(f"{' -> '.join(path)} · {required} minutes required")
+        st.caption(f"{' → '.join(path)} · {required} minutes required")
     else:
-        st.caption(" -> ".join(path))
-    st.graphviz_chart(case_graph(case).to_dot(path), width="stretch")
+        st.caption(" → ".join(path))
+    st.graphviz_chart(
+        style_road_dot(case_graph(case).to_dot(path), path), width="stretch"
+    )
 
 
 def _shortest_path(case: Case, conflict: Conflict) -> list[str]:

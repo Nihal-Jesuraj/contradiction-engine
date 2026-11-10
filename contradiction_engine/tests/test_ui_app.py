@@ -98,13 +98,13 @@ def test_readable_conflict_labels_are_used() -> None:
 
 
 def test_explorer_has_three_tabs() -> None:
-    """The explorer groups its views into Records, Relationships, Diagnostics."""
+    """The explorer groups its views into Records, Relationships, Hash index health."""
     app = _app()
     demo = next(button for button in app.button if button.label == "Load demo case")
     demo.click().run()
     app = _go(app, "Evidence Explorer")
     labels = [tab.label for tab in app.tabs]
-    assert {"Records", "Relationships", "Diagnostics"} <= set(labels)
+    assert {"Records", "Relationships", "Hash index health"} <= set(labels)
     assert not app.exception
 
 
@@ -132,3 +132,39 @@ def test_road_graph_is_built_once_per_case() -> None:
     assert app.session_state["graph_cache"][1] is first
     assert not app.exception
 
+
+
+def _explorer() -> AppTest:
+    """Return the Evidence Explorer with the demo case loaded."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    return _go(app, "Evidence Explorer")
+
+
+def test_hash_health_meters_mark_the_resize_threshold() -> None:
+    """Each index gets a meter with a tick at the 0.75 resize threshold."""
+    app = _explorer()
+    assert not app.exception
+    meters = [m.value for m in app.markdown if m.value.startswith("<div class=\"hud-meter\"")]
+    assert len(meters) == 3
+    assert all('left:75%' in html for html in meters)
+    assert all("keys /" in html and "buckets" in html for html in meters)
+
+
+def test_entity_graph_explains_ring_colours() -> None:
+    """The entity view lists what every hop ring colour means."""
+    app = _explorer()
+    legends = [m.value for m in app.markdown if m.value.startswith("<div class=\"hud-legend\"")]
+    assert len(legends) == 1
+    for text in ("Start", "1 hop", "2 hops", "3 hops"):
+        assert text in legends[0]
+
+
+def test_route_and_swap_controls_exist() -> None:
+    """The road network offers a Swap button and an arrow route caption."""
+    app = _explorer()
+    assert any(button.label == "Swap" for button in app.button)
+    captions = [c.value for c in app.caption]
+    assert any(c.startswith("Fastest route · ") and " → " in c for c in captions)
+    assert not any("->" in c for c in captions)

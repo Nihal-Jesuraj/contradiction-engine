@@ -55,6 +55,15 @@ def render_status_tiles(case: Case, conflicts: list[Conflict]) -> None:
         st.caption(f"{len(entities) - MAX_TILES} more entities not shown.")
 
 
+def render_status_legend() -> None:
+    """Explain the STATUS tile levels beside the grid."""
+    st.caption(
+        "Status legend · HIGH ≥ 0.85 · MEDIUM ≥ 0.50 · LOW < 0.50 · "
+        "CLEAR = no conflict touches that entity. Every tile names its level, "
+        "so colour is never the only signal."
+    )
+
+
 def _render_tile(
     position: int,
     entity: tuple[str, str],

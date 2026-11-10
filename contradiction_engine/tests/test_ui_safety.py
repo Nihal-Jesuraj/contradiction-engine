@@ -40,7 +40,8 @@ def test_formula_cells_are_neutralised_on_export() -> None:
 def test_stylesheet_is_fixed_and_dark() -> None:
     """The stylesheet carries the dark palette and no data-driven parts."""
     css = build_css()
-    assert "--hud-bg: #0E1117" in css
+    assert "--hud-bg: #0B0F14" in css
+    assert "--hud-accent: #38BDF8" in css
     assert "invert(" not in css
 
 
@@ -49,3 +50,53 @@ def test_config_hides_menu_and_keeps_dark_base() -> None:
     config = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text())
     assert config["client"]["toolbarMode"] == "minimal"
     assert config["theme"]["base"] == "dark"
+
+
+def test_stylesheet_braces_balance_and_tiles_follow_the_palette() -> None:
+    """Generated CSS blocks are valid and tile colours come from PALETTE."""
+    from ui.theme import PALETTE, rgba
+
+    css = build_css()
+    assert "{{" not in css and "}}" not in css
+    assert css.count("{") == css.count("}")
+    assert f"--tile-tint: {rgba('high', 0.12)}" in css
+    assert f"--hud-ring-1: {PALETTE['ring_1']}" in css
+    assert "text-transform" not in css
+
+
+def test_native_badge_colours_match_the_palette() -> None:
+    """Streamlit's own badge colours use the same hex values as the CSS."""
+    from ui.theme import PALETTE
+
+    theme = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text())["theme"]
+    assert theme["primaryColor"] == PALETTE["accent"]
+    assert theme["backgroundColor"] == PALETTE["bg"]
+    assert theme["redColor"] == PALETTE["high"]
+    assert theme["orangeColor"] == PALETTE["medium"]
+    assert theme["greenColor"] == PALETTE["clear"]
+    assert theme["grayColor"] == PALETTE["low"]
+
+
+def test_clear_status_is_not_the_accent_or_the_route() -> None:
+    """CLEAR, HIGH, and the route highlight never share a colour."""
+    from ui.theme import PALETTE
+
+    assert PALETTE["clear"] != PALETTE["accent"]
+    assert PALETTE["route"] != PALETTE["high"]
+    assert len({PALETTE[k] for k in ("high", "medium", "low", "clear")}) == 4
+
+
+def test_inline_code_does_not_use_the_clear_colour() -> None:
+    """Record IDs in code spans must not look like a CLEAR status."""
+    from ui.theme import PALETTE
+
+    theme = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text())["theme"]
+    assert theme["codeTextColor"] != PALETTE["clear"]
+
+
+def test_numbers_table_shows_route_arrows() -> None:
+    """Detector route text is shown with arrows, other values stay as-is."""
+    from ui.widgets import numbers_frame
+
+    frame = numbers_frame({"shortest_path": "A -> B -> C", "elapsed_minutes": 1.0})
+    assert frame["Value"].tolist() == ["A → B → C", "1.0"]

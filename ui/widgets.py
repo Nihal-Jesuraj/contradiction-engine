@@ -315,7 +315,7 @@ def _number_text(value: object) -> str:
     """Format one conflict number without mixing column types."""
     if isinstance(value, float):
         return f"{value:.1f}"
-    return str(value)
+    return str(value).replace(" -> ", " → ")
 
 
 def highest_severity(conflicts: list[Conflict]) -> float | None:

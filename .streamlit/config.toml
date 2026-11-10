@@ -1,10 +1,19 @@
 [theme]
 base = "dark"
-primaryColor = "#2DD4BF"
-backgroundColor = "#0E1117"
-secondaryBackgroundColor = "#161B26"
-textColor = "#E6EDF3"
+primaryColor = "#38BDF8"
+backgroundColor = "#0B0F14"
+secondaryBackgroundColor = "#111821"
+textColor = "#E7EEF6"
 font = "sans serif"
+# Native badge/markdown colours follow the HUD palette (ui/theme.py).
+redColor = "#FB7185"
+orangeColor = "#FBBF24"
+greenColor = "#34D399"
+grayColor = "#94A3B8"
+blueColor = "#38BDF8"
+# Inline code (record IDs) must not borrow the CLEAR green.
+codeTextColor = "#9BA9BA"
+codeBackgroundColor = "#17202B"
 
 [server]
 maxUploadSize = 5

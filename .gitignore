@@ -14,3 +14,4 @@ __pycache__/
 .idea/
 .vscode/
 *.swp
+.streamlit-dev.log # keeps the stray dev log out of the repo
