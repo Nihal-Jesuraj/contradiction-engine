@@ -1,1 +1,0 @@
-"""Contradiction Engine UI package."""

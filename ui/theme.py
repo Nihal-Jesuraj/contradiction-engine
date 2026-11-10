@@ -9,31 +9,34 @@ from __future__ import annotations
 import streamlit as st
 
 PALETTE: dict[str, str] = {
-    "bg": "#0B0F14",
-    "panel": "#111821",
-    "card": "#17202B",
-    "card_soft": "#141C25",
-    "text": "#E7EEF6",
-    "muted": "#9BA9BA",
-    "line": "rgba(231, 238, 246, 0.12)",
-    "line_strong": "rgba(231, 238, 246, 0.22)",
-    "accent": "#38BDF8",
-    "accent_hover": "#7DD3FC",
-    "on_accent": "#08131C",
+    "bg": "#0C0B0A",
+    "panel": "#121110",
+    "card": "#181614",
+    "card_soft": "#141311",
+    "text": "#F1EBE0",
+    "muted": "#A39A8B",
+    "line": "rgba(241, 235, 224, 0.12)",
+    "line_strong": "rgba(241, 235, 224, 0.22)",
+    "accent": "#D9B26F",
+    "accent_hover": "#E9C98A",
+    "on_accent": "#1A1408",
     "high": "#FB7185",
-    "medium": "#FBBF24",
-    "low": "#94A3B8",
+    "medium": "#FB923C",
+    "low": "#9C9484",
     "clear": "#34D399",
-    "route": "#38BDF8",
-    "grid": "#64748B",
-    "edge": "#475569",
-    "node": "#17202B",
-    "ring_1": "#A78BFA",
-    "ring_2": "#F472B6",
-    "ring_3": "#94A3B8",
-    "ring_far": "#3B4A5C",
-    "sidebar_tint": "rgba(11, 15, 20, 0.62)",
+    "route": "#D9B26F",
+    "grid": "#6B6254",
+    "edge": "#4A4338",
+    "node": "#181614",
+    "ring_1": "#F2EBDD",
+    "ring_2": "#C98B5B",
+    "ring_3": "#8C8378",
+    "ring_far": "#3F3A33",
+    "sidebar_tint": "rgba(12, 11, 10, 0.62)",
 }
+
+
+TITLE_FONT = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif'
 
 
 def rgba(name: str, alpha: float) -> str:
@@ -91,8 +94,9 @@ h1, h2, h3 {{
   color: var(--hud-text);
 }}
 h1 {{
-  font-size: 1.6rem;
-  font-weight: 650;
+  font-family: {TITLE_FONT};
+  font-size: 1.75rem;
+  font-weight: 500;
   margin-bottom: 0.15rem;
 }}
 h2 {{
@@ -104,8 +108,9 @@ h3 {{
   font-weight: 600;
 }}
 [data-testid="stMarkdownContainer"] h1 {{
-  font-size: 1.65rem;
-  font-weight: 650;
+  font-family: {TITLE_FONT};
+  font-size: 1.75rem;
+  font-weight: 500;
   letter-spacing: 0.005em;
 }}
 [data-testid="stMarkdownContainer"] h2 {{
@@ -215,14 +220,23 @@ p, li, label, .stMarkdown {{
   border-color: var(--hud-accent);
   color: var(--hud-accent-hover);
 }}
-.stButton > button[kind="primary"] {{
+.stButton > button[kind="primary"],
+[data-testid="stBaseButton-primary"],
+[data-testid="stBaseButton-primaryFormSubmit"] {{
   background: var(--hud-accent);
-  border-color: var(--hud-accent);
+  border: 1px solid var(--hud-accent);
+  border-radius: 8px;
   color: var(--hud-on-accent);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }}
-.stButton > button[kind="primary"]:hover {{
+[data-testid="stBaseButton-primary"] p,
+[data-testid="stBaseButton-primaryFormSubmit"] p {{
+  color: var(--hud-on-accent);
+}}
+.stButton > button[kind="primary"]:hover,
+[data-testid="stBaseButton-primary"]:hover,
+[data-testid="stBaseButton-primaryFormSubmit"]:hover {{
   background: var(--hud-accent-hover);
   border-color: var(--hud-accent-hover);
   color: var(--hud-on-accent);

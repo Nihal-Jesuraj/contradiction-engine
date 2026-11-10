@@ -40,8 +40,10 @@ def test_formula_cells_are_neutralised_on_export() -> None:
 def test_stylesheet_is_fixed_and_dark() -> None:
     """The stylesheet carries the dark palette and no data-driven parts."""
     css = build_css()
-    assert "--hud-bg: #0B0F14" in css
-    assert "--hud-accent: #38BDF8" in css
+    from ui.theme import PALETTE
+
+    assert f"--hud-bg: {PALETTE['bg']}" in css
+    assert f"--hud-accent: {PALETTE['accent']}" in css
     assert "invert(" not in css
 
 
@@ -100,3 +102,12 @@ def test_numbers_table_shows_route_arrows() -> None:
 
     frame = numbers_frame({"shortest_path": "A -> B -> C", "elapsed_minutes": 1.0})
     assert frame["Value"].tolist() == ["A → B → C", "1.0"]
+
+
+def test_accent_and_hop_rings_are_all_distinct_from_status_colours() -> None:
+    """Gold accent, severity levels, CLEAR, and hop rings never share a colour."""
+    from ui.theme import PALETTE
+
+    keys = ("accent", "high", "medium", "low", "clear",
+            "ring_1", "ring_2", "ring_3", "ring_far")
+    assert len({PALETTE[k] for k in keys}) == len(keys)

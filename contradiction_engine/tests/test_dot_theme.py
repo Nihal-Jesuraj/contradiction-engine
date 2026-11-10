@@ -5,6 +5,7 @@ from __future__ import annotations
 from contradiction_engine.algorithms.evidence_graph import EvidenceGraph
 from contradiction_engine.algorithms.graph import WeightedGraph
 from ui.dot_theme import style_entity_dot, style_road_dot
+from ui.theme import PALETTE
 
 
 def build_road() -> WeightedGraph:
@@ -21,16 +22,16 @@ def test_road_dot_uses_dark_palette_and_minutes() -> None:
     dot = style_road_dot(build_road().to_dot(["A", "B", "C"]), ["A", "B", "C"])
     assert 'bgcolor="transparent"' in dot
     assert 'label="2 min"' in dot
-    assert 'fontcolor="#E7EEF6"' in dot
+    assert f'fontcolor="{PALETTE["text"]}"' in dot
     assert "#d62728" not in dot
 
 
 def test_road_dot_highlights_the_route_in_accent() -> None:
     """The fastest route uses the UI accent, not the HIGH severity colour."""
     dot = style_road_dot(build_road().to_dot(["A", "B"]), ["A", "B"])
-    assert 'color="#38BDF8", penwidth=2.4' in dot
-    assert '"A" [label="A", color="#38BDF8", penwidth=2.2];' in dot
-    assert '"B" [label="B", color="#38BDF8", penwidth=2.2];' in dot
+    assert f'color="{PALETTE["route"]}", penwidth=2.4' in dot
+    assert f'"A" [label="A", color="{PALETTE["route"]}", penwidth=2.2];' in dot
+    assert f'"B" [label="B", color="{PALETTE["route"]}", penwidth=2.2];' in dot
 
 
 def test_entity_dot_uses_rings_instead_of_bright_fills() -> None:
@@ -40,9 +41,9 @@ def test_entity_dot_uses_rings_instead_of_bright_fills() -> None:
     graph.link("device:D1", "account:A1")
     dot = style_entity_dot(graph.to_dot({"person:P1": 0, "device:D1": 1}),
                            "person:P1")
-    assert 'fillcolor="#17202B"' in dot
-    assert 'color="#38BDF8"' in dot
-    assert 'color="#A78BFA"' in dot
+    assert f'fillcolor="{PALETTE["node"]}"' in dot
+    assert f'color="{PALETTE["route"]}"' in dot
+    assert f'color="{PALETTE["ring_1"]}"' in dot
     assert "shape=box" in dot
     assert "#d62728" not in dot
     assert "#eeeeee" not in dot
@@ -57,7 +58,7 @@ def test_entity_dot_emphasises_the_start_ring() -> None:
     start_line = next(
         line for line in dot.splitlines() if '"person:P1"' in line
     )
-    assert 'color="#38BDF8"' in start_line
+    assert f'color="{PALETTE["route"]}"' in start_line
     assert "penwidth=3" in start_line
 
 

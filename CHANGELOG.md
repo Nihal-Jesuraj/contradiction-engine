@@ -6,9 +6,10 @@ All checkpoints from the Contradiction Engine rebuild are recorded here.
 
 ### Changed (UI only; no algorithm or detector logic touched)
 
-- **Refined HUD palette.** One sky-blue accent (`#38BDF8`), rose/amber/slate
-  severity colours, and a separate emerald for CLEAR. The fastest-route
-  highlight uses the accent, so a route no longer looks like a HIGH warning.
+- **Refined HUD palette.** Warm near-black surfaces with one champagne-gold
+  accent (`#D9B26F`), rose/orange/taupe severity colours, and a separate emerald
+  for CLEAR. The fastest-route highlight uses the accent, so a route no longer
+  looks like a HIGH warning. Page titles use a serif stack.
 - **One source of truth for colour.** `ui/theme.py` `PALETTE` now feeds the CSS,
   the STATUS tile tints, and the Graphviz styling in `ui/dot_theme.py`.
   `.streamlit/config.toml` carries matching native badge and code colours, and

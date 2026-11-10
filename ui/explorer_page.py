@@ -181,7 +181,7 @@ def _render_place_map(case: Case) -> None:
         _render_direct_comparison(graph, source, target, path, required)
     st.caption(
         "Place = node · road = edge · label = travel minutes · "
-        "sky blue = fastest route."
+        "gold = fastest route."
     )
     st.graphviz_chart(
         style_road_dot(graph.to_dot(path), path), width="stretch"
