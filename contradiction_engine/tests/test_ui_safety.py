@@ -123,3 +123,11 @@ def test_sidebar_brand_and_card_glow_are_fixed_and_palette_driven() -> None:
     assert ".hud-brand-title" in css and TITLE_FONT in css
     assert f"0 18px 48px {rgba('accent', 0.06)}" in css
     assert PALETTE["accent"] == "#D9B26F"
+
+
+def test_stylesheet_hides_the_github_link_and_star_badge() -> None:
+    """The toolbar's GitHub link, star count and deploy actions stay hidden."""
+    css = build_css()
+    assert '[data-testid="stToolbarActions"]' in css
+    assert '[data-testid="stToolbar"] a[href*="github.com"]' in css
+    assert "display: none !important" in css

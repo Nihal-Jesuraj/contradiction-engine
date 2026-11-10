@@ -275,6 +275,18 @@ hr {{
 [data-testid="stAlertContentWarning"] {{
   color: var(--hud-text);
 }}
+[data-testid="stToolbarActions"],
+[data-testid="stAppDeployButton"],
+.stAppDeployButton,
+[data-testid="stMainMenu"],
+#MainMenu,
+[data-testid="stToolbar"] a[href*="github.com"],
+[data-testid="stToolbar"] [class*="GitHub"],
+[data-testid="stToolbar"] [class*="github"],
+[data-testid="stToolbar"] [class*="Star"],
+[data-testid="stToolbar"] [class*="star"] {{
+  display: none !important;
+}}
 [data-testid="stToast"] {{
   border: 1px solid var(--hud-line);
 }}
