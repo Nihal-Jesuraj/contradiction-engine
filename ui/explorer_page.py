@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, time, timezone
+
 import pandas as pd
 import streamlit as st
 
@@ -89,14 +91,17 @@ def _by_entity(index: CaseIndex, results: list[Evidence],
 
 
 def _by_date(index: CaseIndex, results: list[Evidence]) -> list[Evidence]:
-    """Keep records inside the chosen date range."""
+    """Keep records inside the chosen date range with a binary-search slice."""
     first = index.records[0].timestamp.date()
     last = index.records[-1].timestamp.date()
     chosen = st.date_input("Date range", value=(first, last), min_value=first,
                            max_value=last, key="explorer_dates")
     chosen = tuple(chosen) if isinstance(chosen, (tuple, list)) else (chosen,)
     start, end = chosen[0], chosen[-1]
-    return [row for row in results if start <= row.timestamp.date() <= end]
+    start_at = datetime.combine(start, time.min, tzinfo=timezone.utc)
+    end_at = datetime.combine(end, time.max, tzinfo=timezone.utc)
+    allowed = {row.id for row in index.in_range(start_at, end_at)}
+    return [row for row in results if row.id in allowed]
 
 
 def _render_volume_chart(results: list[Evidence]) -> None:
@@ -152,7 +157,11 @@ def _render_entity_graph(index: CaseIndex) -> None:
     if not nodes:
         st.info("No entities to graph.")
         return
-    start = st.selectbox("Person, device or account", nodes, key="entity_start")
+    start = st.selectbox(
+        "Entity (person, device, account, or place)",
+        nodes,
+        key="entity_start",
+    )
     depth = st.slider("Hops", min_value=1, max_value=3, value=2,
                       key="entity_depth")
     related = graph.related(start, depth)

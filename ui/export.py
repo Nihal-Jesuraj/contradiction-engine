@@ -10,7 +10,7 @@ DANGEROUS_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 def neutralize_cell(value: str) -> str:
     """Prefix a quote when a cell could be run as a spreadsheet formula."""
-    return "'" + value if value.startswith(DANGEROUS_PREFIXES) else value
+    return "'" + value if value.lstrip().startswith(DANGEROUS_PREFIXES) else value
 
 
 def safe_csv(text: str) -> str:

@@ -2,6 +2,33 @@
 
 All checkpoints from the Contradiction Engine rebuild are recorded here.
 
+## 0.3.1 — 2026-11-10
+
+### Fixed (UI and packaging)
+
+- The demo preset now includes a claimed-place conflict, so **Load demo case**
+  exercises every detector.
+- Loading a new case clears case-scoped explorer, map, and entity-graph widget
+  state, preventing stale options after an upload or a different generated case.
+- STATUS tiles now key people and devices separately and label the entity kind,
+  so a person and a device with the same name no longer merge.
+- Unknown conflict kinds are grouped into one tab instead of one tab per
+  conflict.
+- The Evidence Explorer date filter now uses `CaseIndex.in_range` (binary
+  search) rather than a linear scan.
+- Formula neutralisation in exported CSV also catches cells with leading
+  whitespace before `=`, `+`, `-`, `@`, tab, or CR.
+- The entity-graph selector is labelled for every node kind, including places.
+
+### Changed (packaging and docs)
+
+- `README.md` and `CHANGELOG.md` moved to the repository root.
+- `pyproject.toml` now pins the tested `streamlit==1.66.1`, matching
+  `requirements.txt`.
+- README page descriptions, project layout, and test coverage now match the
+  current UI.
+- Removed a stale `.streamlit/config.toml` comment about a sidebar theme toggle.
+
 ## 0.3.0 — 2026-11-06
 
 ### Changed (UI only)

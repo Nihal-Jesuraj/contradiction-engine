@@ -87,6 +87,18 @@ RESPONSIBLE_USE = (
     "the stated rules, not that a person is guilty or lying."
 )
 
+CASE_SCOPED_KEYS = (
+    "graph_cache",
+    "explorer_person",
+    "explorer_device",
+    "explorer_account",
+    "explorer_keyword",
+    "explorer_dates",
+    "map_from",
+    "map_to",
+    "entity_start",
+)
+
 
 def ensure_state() -> None:
     """Create the session keys shared by every page."""
@@ -115,6 +127,7 @@ def case_graph(case: Case) -> WeightedGraph:
 
 def store_case(case: Case, source: str) -> None:
     """Replace the active case and clear the previous analysis."""
+    _clear_case_state()
     st.session_state.case = case
     st.session_state.index = CaseIndex(case.records)
     st.session_state.conflicts = []
@@ -122,6 +135,14 @@ def store_case(case: Case, source: str) -> None:
     st.session_state.analysis_done = False
     st.session_state.runtime_ms = 0.0
     st.session_state.case_source = source
+
+
+def _clear_case_state() -> None:
+    """Forget widgets whose options or values belong to the previous case."""
+    for key in CASE_SCOPED_KEYS:
+        st.session_state.pop(key, None)
+    for key in [key for key in st.session_state if str(key).startswith("shown_")]:
+        st.session_state.pop(key, None)
 
 
 def render_sidebar() -> str:

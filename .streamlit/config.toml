@@ -10,6 +10,6 @@ font = "sans serif"
 maxUploadSize = 5
 
 [client]
-# "minimal" hides the toolbar menu (Deploy, Settings, etc.). Theme switching
-# is a small toggle in the app sidebar instead.
+# "minimal" hides the toolbar menu (Deploy, Settings, etc.) when no
+# app-specific toolbar options are registered.
 toolbarMode = "minimal"

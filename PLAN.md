@@ -1,5 +1,8 @@
 # PLAN.md — Contradiction Engine
 
+> Historical design plan. `README.md` is the current source of truth; the UI
+> details below describe the implementation path and may be superseded.
+
 ## 1. Goal
 
 Rebuild this repository as **Contradiction Engine**, a small, fully explainable
@@ -239,14 +242,15 @@ Explorer**, plus the responsible-use banner.
   truth, clears conflicts; shows type counts and download buttons.
 - Upload form: CSV/JSON, optional truth JSON, optional places JSON; errors shown
   without replacing state.
-- Analyze: ANALYZE calls `run_all_detectors`; metrics include records, conflicts
-  per kind, precision/recall/F1 when truth exists; selectable conflict detail with
-  side-by-side records, rule, numbers, explanation; empty state explains that
-  consistency is not truth; one "How this works" expander per detector with its
-  algorithm and complexity.
-- Explorer: person/device/account filters, time range via bounds, optional trie
-  keyword search, result table and a simple pandas bar chart of records per day.
-  No Plotly.
+- Analyze: ANALYZE calls `run_all_detectors`; KPI cards show records, conflicts,
+  highest severity, and runtime; a separate ground-truth panel shows
+  precision/recall/F1 when truth exists; conflicts are grouped into tabs by
+  readable kind and rendered as cards with records, rule, numbers, explanation,
+  route graph, or state timeline; STATUS tiles summarise entity severity; one
+  "How the detectors work" expander lists algorithms and complexity.
+- Explorer: person/device/account filters, binary-search date range, optional
+  trie keyword search, a slim record table, records-per-hour (or per-type) chart,
+  and Records / Relationships / Diagnostics tabs. No Plotly.
 
 ## 11. Tests
 

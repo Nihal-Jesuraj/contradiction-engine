@@ -155,9 +155,11 @@ def _group_conflicts(
         if items:
             groups.append((kind, items))
     known = set(KIND_LABELS)
+    unknown: dict[str, list[Conflict]] = {}
     for conflict in conflicts:
         if conflict.kind not in known:
-            groups.append((conflict.kind, [conflict]))
+            unknown.setdefault(conflict.kind, []).append(conflict)
+    groups.extend(unknown.items())
     return groups
 
 

@@ -49,18 +49,21 @@ Run the tests from the repository root:
    contradictions of each kind to plant. Or upload a CSV/JSON case, an optional
    ground-truth JSON, and an optional `places.json`. Generated cases can be
    downloaded as `case.csv`, `ground_truth.json`, and `places.json`.
-2. **Analyze & Conflicts** — press **ANALYZE**. See counts per conflict kind,
-   precision/recall when truth is available, a conflicts table, and a detail
-   view with the two records side by side, the rule, the numbers, and the
-   explanation.
+2. **Analyze & Conflicts** — press **ANALYZE**. See KPI cards (records,
+   conflicts, highest severity, detector runtime), a separate ground-truth
+   score panel, STATUS tiles, and conflicts grouped into tabs by readable kind.
+   Each conflict card shows the involved records side by side, the broken rule,
+   the numbers, the explanation, and a route graph or state timeline when
+   relevant.
 3. **Evidence Explorer** — filter by person, device, or account (hash indexes),
-   by time range (binary search), and by keyword (prefix trie). A simple bar
-   chart shows records per day, and two relationship views render the road map
-   and the entity graph as Graphviz diagrams. A hash diagnostics panel shows
-   each index's load factor and longest chain.
+   by time range (binary search through `CaseIndex.in_range`), and by keyword
+   (prefix trie). The Records tab shows a slim table and a records-per-hour
+   chart (or per record type when only one hour is present). The Relationships
+   tab renders the road map and the entity graph as Graphviz diagrams, and the
+   Diagnostics tab shows each index's load factor and longest chain.
 
-Each page has a **How this works** expander naming the algorithm and its
-complexity.
+The Analyze page includes a **How the detectors work** expander listing each
+detector's algorithm and complexity.
 
 ---
 
@@ -216,7 +219,15 @@ in the place table.
 ## Project layout
 
 ```text
-app.py                          Streamlit UI only
+app.py                          Streamlit page router
+ui/
+  theme.py                      fixed dark HUD stylesheet
+  widgets.py                    labels, session state, sidebar, shared tables
+  generate_page.py              Generate / Upload page
+  analyze_page.py               Analyze & Conflicts page
+  explorer_page.py              Evidence Explorer page
+  status_tiles.py               STATUS tile grid
+  export.py                     spreadsheet-safe CSV export
 contradiction_engine/
   models.py                     Evidence, Conflict, Case, scoring, CaseIndex
   generator.py                  clean case + planted truth
@@ -236,8 +247,8 @@ contradiction_engine/
     claims.py
     location_claims.py
   tests/
-  README.md
-  CHANGELOG.md
+README.md
+CHANGELOG.md
 ```
 
 No algorithm code imports pandas or Streamlit. No algorithm uses `heapq`,
@@ -393,6 +404,10 @@ Coverage includes:
 - an uploaded `claimed_at` row reaching the detector through the loader;
 - end-to-end recall **1.00**, precision **1.00**, and zero conflicts on a clean
   generated case;
+- Streamlit AppTests for page routing, the “Not analysed yet” state, the full
+  generate → analyze → explore journey, STATUS tiles, and road-graph caching;
+- UI safety tests for oversized CSV fields, formula-safe exports, the fixed dark
+  stylesheet, and the minimal toolbar config;
 - an `ast` guard against forbidden imports and built-in sorting.
 
 ---

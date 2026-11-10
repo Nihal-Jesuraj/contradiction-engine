@@ -57,12 +57,15 @@ def _demo_row() -> None:
         if st.button("Load demo case", type="secondary"):
             _load_demo()
     with right:
-        st.caption("Seeded demo with default generation settings (seed 42).")
+        st.caption("Demo preset, seed 42, including every conflict kind.")
 
 
 def _load_demo() -> None:
-    """Generate and store the default demo case."""
-    _load_generated(GeneratorConfig(), source="Demo · seed 42")
+    """Generate and store the demo case with one claimed-place conflict."""
+    _load_generated(
+        GeneratorConfig(location_claim_conflicts=1),
+        source="Demo · seed 42",
+    )
 
 
 def _generate_form() -> None:

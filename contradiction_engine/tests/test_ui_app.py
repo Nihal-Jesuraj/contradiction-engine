@@ -39,6 +39,37 @@ def test_not_analysed_before_analyze() -> None:
     assert not app.tabs
 
 
+def test_demo_includes_claimed_place_conflict() -> None:
+    """The one-click demo exercises the claimed-place detector too."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Analyze & Conflicts")
+    next(button for button in app.button if button.label == "ANALYZE").click().run()
+    labels = [tab.label for tab in app.tabs]
+    assert any(label.startswith("Claimed place vs sighting") for label in labels)
+    assert not app.exception
+
+
+def test_new_case_clears_explorer_filters() -> None:
+    """Loading another case does not keep stale entity selections."""
+    app = _app()
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Evidence Explorer")
+    person = next(box for box in app.selectbox if box.label == "Person")
+    person.set_value(person.options[1]).run()
+    assert person.value != "All"
+
+    app = _go(app, "Generate / Upload")
+    demo = next(button for button in app.button if button.label == "Load demo case")
+    demo.click().run()
+    app = _go(app, "Evidence Explorer")
+    person = next(box for box in app.selectbox if box.label == "Person")
+    assert person.value == "All"
+    assert not app.exception
+
+
 def test_generate_then_analyze_then_explore() -> None:
     """The full generate, analyze, and explore journey stays healthy."""
     app = _app()

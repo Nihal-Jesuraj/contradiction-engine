@@ -34,6 +34,7 @@ def test_formula_cells_are_neutralised_on_export() -> None:
     assert "'=HYPERLINK" in safe_csv(case_to_csv(case))
     assert neutralize_cell("hello") == "hello"
     assert neutralize_cell("@cmd") == "'@cmd"
+    assert neutralize_cell(" =cmd") == "' =cmd"
 
 
 def test_stylesheet_is_fixed_and_dark() -> None:
