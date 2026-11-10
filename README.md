@@ -7,7 +7,7 @@ data structures and graph algorithms find records that cannot all be true, and
 the UI shows the conflicting records, the broken rule, the numbers, and a
 plain-English explanation.
 
-**Live demo:** <https://contradiction-engine-nihal.streamlit.app/>
+**Live demo:** <https://contradiction-engine-dsa.streamlit.app/>
 
 > **Responsible use.** This is an investigative-support prototype built for a
 > Data Structures & Algorithms course. A conflict means the records disagree
