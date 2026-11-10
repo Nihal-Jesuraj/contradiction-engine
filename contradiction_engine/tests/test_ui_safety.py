@@ -111,3 +111,15 @@ def test_accent_and_hop_rings_are_all_distinct_from_status_colours() -> None:
     keys = ("accent", "high", "medium", "low", "clear",
             "ring_1", "ring_2", "ring_3", "ring_far")
     assert len({PALETTE[k] for k in keys}) == len(keys)
+
+
+def test_sidebar_brand_and_card_glow_are_fixed_and_palette_driven() -> None:
+    """The brand block is static markup; the card glow derives from the accent."""
+    from ui.theme import PALETTE, TITLE_FONT, rgba
+    from ui.widgets import BRAND_HTML
+
+    css = build_css()
+    assert "Contradiction Engine" in BRAND_HTML and "{" not in BRAND_HTML
+    assert ".hud-brand-title" in css and TITLE_FONT in css
+    assert f"0 18px 48px {rgba('accent', 0.06)}" in css
+    assert PALETTE["accent"] == "#D9B26F"

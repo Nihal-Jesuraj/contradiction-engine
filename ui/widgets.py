@@ -82,6 +82,14 @@ DETECTOR_DOCS: tuple[tuple[str, str, str], ...] = (
     ("Claimed place vs sighting", "HashTable, merge sort, window bounds, Dijkstra from the claimed place", "O(n log n + V(V+E) log V)"),
 )
 
+# Fixed markup: no case data is ever interpolated into it.
+BRAND_HTML = (
+    '<div class="hud-brand">'
+    '<div class="hud-brand-title">Contradiction Engine</div>'
+    '<div class="hud-brand-sub">Temporal contradiction detector</div>'
+    "</div>"
+)
+
 RESPONSIBLE_USE = (
     "Investigative-support prototype. A conflict means records disagree under "
     "the stated rules, not that a person is guilty or lying."
@@ -148,6 +156,7 @@ def _clear_case_state() -> None:
 def render_sidebar() -> str:
     """Render navigation, the current-case card, and the responsibility note."""
     with st.sidebar:
+        st.markdown(BRAND_HTML, unsafe_allow_html=True)
         page = st.radio("Page", PAGES)
         st.divider()
         st.caption("Current case")

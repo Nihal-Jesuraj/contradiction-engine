@@ -168,3 +168,9 @@ def test_route_and_swap_controls_exist() -> None:
     captions = [c.value for c in app.caption]
     assert any(c.startswith("Fastest route · ") and " → " in c for c in captions)
     assert not any("->" in c for c in captions)
+
+
+def test_sidebar_shows_the_brand_block() -> None:
+    """The sidebar opens with the serif product title and subtitle."""
+    app = _app()
+    assert any(m.value.startswith('<div class="hud-brand">') for m in app.sidebar.markdown)

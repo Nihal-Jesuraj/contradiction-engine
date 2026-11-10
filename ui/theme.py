@@ -249,9 +249,15 @@ p, li, label, .stMarkdown {{
   outline-offset: 2px;
 }}
 [data-testid="stForm"] {{
-  border: 1px solid var(--hud-line);
-  border-radius: 12px;
+  border: 1px solid {rgba('accent', 0.26)};
+  border-radius: 14px;
   padding: 0.7rem 0.95rem;
+  background:
+    radial-gradient(520px 200px at 100% 0%, {rgba('accent', 0.08)},
+                    transparent 70%),
+    var(--hud-card-soft);
+  box-shadow: 0 0 0 1px {rgba('accent', 0.05)},
+              0 18px 48px {rgba('accent', 0.06)};
 }}
 hr {{
   border-color: var(--hud-line);
@@ -274,6 +280,25 @@ hr {{
 }}
 [data-testid="stProgress"] > div > div > div > div {{
   background: var(--hud-accent);
+}}
+.hud-brand {{
+  padding: 0.1rem 0 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--hud-line);
+}}
+.hud-brand-title {{
+  font-family: {TITLE_FONT};
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--hud-text);
+}}
+.hud-brand-sub {{
+  margin-top: 0.25rem;
+  font-family: {TITLE_FONT};
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--hud-muted);
 }}
 .hud-meter {{
   margin: 0.15rem 0 0.9rem;
